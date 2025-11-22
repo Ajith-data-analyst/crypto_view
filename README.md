@@ -1,7 +1,5 @@
 # Crypto View 📊
 
-![Crypto View Banner](https://via.placeholder.com/1200x600/1a6873/ffffff?text=Crypto+View+-+Live+Crypto+Analytics)
-
 > Real-time cryptocurrency analytics dashboard with professional market microstructure indicators and risk assessment tools.
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://your-demo-link.com)
@@ -10,7 +8,10 @@
 [![JavaScript](https://img.shields.io/badge/lang-JavaScript-yellow)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![WebSocket](https://img.shields.io/badge/API-WebSocket-orange)](https://websockets.org)
 
-![Crypto View Demo](https://via.placeholder.com/800x400/1a6873/ffffff?text=Live+Crypto+Dashboard+GIF)
+# ✨ See It Live!
+My project, **[Crypto Views]**, is live and ready to explore.
+
+**👉 [View My Live Project](https://ajith-data-analyst.github.io/crypto_view/)**
 
 ## 🚀 Features
 
