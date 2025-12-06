@@ -7,9 +7,6 @@
     <title>Crypto View</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-
-
 </head>
 
 <body>
@@ -252,13 +249,15 @@
         <button class="fab" id="searchBtn" title="Search">
             <span class="fab-icon">🔍</span>
         </button>
-
+        <button class="fab" id="currencyToggle" title="Toggle Currency">
+            <span class="fab-icon">USDT</span>
+        </button>
     </div>
 
     <!-- Search Panel -->
     <div class="search-panel" id="searchPanel">
         <div class="search-panel-header">
-            <h3>Cryto Search</h3>
+            <h3>Crypto Search</h3>
             <button class="close-btn" id="closeSearch">✕</button>
         </div>
         <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
@@ -276,10 +275,7 @@
                 <span class="footer-label">Connection</span>
                 <span class="footer-value" id="footerConnection">Active</span>
             </div>
-            <div class="footer-item">
-                <span class="footer-label">last refresh</span>
-                <span class="footer-value" id="dataFreshness">--s</span>
-            </div>
+
             <div class="footer-item">
                 <span class="footer-label">Latency</span>
                 <span class="footer-value" id="latency">--ms</span>
@@ -289,73 +285,66 @@
                 <span class="footer-value" id="dataPoints">0</span>
             </div>
             <div class="footer-item" id="footerLivePriceBox" style="display:none;">
-
                 <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
             </div>
-
+        </div>
     </footer>
-    </div>
+
+    <!-- Copyright Footer -->
+    <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
+
+        <!-- Top Grid Section -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
+
+            <!-- Domains & Technologies -->
+            <div>
+                <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                    Domains & Technologies
+                </h4>
+
+                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">⚡ FinTech & Crypto Markets</span>
+                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">📈 Data Analytics & Visualization</span>
+                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">🔌 Real-Time WebSocket Streaming</span>
+                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">🌐 REST APIs (CoinGecko)</span>
+                </div>
+            </div>
+
+            <!-- APIs -->
+            <div>
+                <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                    APIs
+                </h4>
+
+                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                    <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
+                    <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div>
+                <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                    Status
+                </h4>
+
+                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                    <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
+                    <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Last updated: <span id="footerLastUpdate">Now</span></div>
+                    <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
+                    <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
+            <a href="https://github.com/Ajith-data-analyst/Crypto_View" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
+            © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
+        </a>
+        </div>
+    </footer>
+
     <script src="app.js"></script>
 </body>
-<!-- Copyright Footer -->
-<!-- Copyright Footer -->
-<footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
-
-    <!-- Top Grid Section -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
-
-        <!-- Domains & Technologies -->
-        <div>
-            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                Domains & Technologies
-            </h4>
-
-            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">⚡ FinTech & Crypto Markets</span>
-                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">📈 Data Analytics & Visualization</span>
-                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">🔌 Real-Time WebSocket Streaming</span>
-                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">🌐 REST APIs (CoinGecko)</span>
-
-            </div>
-        </div>
-
-
-
-        <!-- APIs -->
-        <div>
-            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                APIs
-            </h4>
-
-            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
-                <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
-            </div>
-        </div>
-
-        <!-- Status -->
-        <div>
-            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                Status
-            </h4>
-
-            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
-                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Last updated: <span id="footerLastUpdate">Now</span></div>
-                <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
-                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
-            </div>
-        </div>
-
-    </div>
-
-    <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
-        <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
-        © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
-    </a>
-    </div>
-
-
-</footer>
 
 </html>

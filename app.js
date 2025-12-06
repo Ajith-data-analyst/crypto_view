@@ -11,7 +11,9 @@ const state = {
     lastUpdateTime: Date.now(),
     alerts: [],
     theme: 'light',
-    lastLivePrice: null
+    lastLivePrice: null,
+    currency: 'USDT',
+    usdtToInrRate: 83.5 // Initial rate, will be updated
 };
 
 // Cryptocurrency mapping for Binance
@@ -35,12 +37,15 @@ function init() {
     setupThemeToggle();
     setupExportButton();
     setupSearchPanel();
+    setupCurrencyToggle();
     connectWebSocket();
     fetchAllCryptoData();
     setInterval(() => fetchAllCryptoData(), 30000);
     updateSystemHealth();
     setInterval(updateSystemHealth, 1000);
     setupPriceVisibilityWatcher();
+    fetchUsdtToInrRate();
+    setInterval(fetchUsdtToInrRate, 5000); // Update rate every minute
 
     addAlert('System initialized successfully', 'success');
 }
@@ -53,42 +58,105 @@ function updateTime() {
     if (el) el.textContent = timeString;
 }
 
-// Setup crypto selector buttons
 function setupCryptoSelector() {
     const buttons = document.querySelectorAll('.crypto-btn');
-    let lastHiddenBtn = document.querySelector('.crypto-btn.active');
 
-    // Hide the default active button on load
-    if (lastHiddenBtn) {
-        lastHiddenBtn.style.display = "none";
-    }
-
+    // 🔹 INITIAL STATE: hide the default active crypto (BTC)
     buttons.forEach(btn => {
+        const isCurrent = btn.dataset.symbol === state.currentSymbol; // state.currentSymbol = 'BTC' by default
+
+        if (isCurrent) {
+            btn.classList.add('active', 'hidden'); // active but not visible
+        } else {
+            btn.classList.remove('active', 'hidden'); // all others visible, not active
+        }
+
+        // 🔹 CLICK HANDLER
         btn.addEventListener('click', () => {
+            // 1. Reset all buttons
+            buttons.forEach(b => b.classList.remove('active', 'hidden'));
 
-            // Show previously hidden button
-            if (lastHiddenBtn && lastHiddenBtn !== btn) {
-                lastHiddenBtn.style.display = "flex";
-            }
+            // 2. Make clicked one active + hidden
+            btn.classList.add('active', 'hidden');
 
-            // Hide current selected button
-            btn.style.display = "none";
-            lastHiddenBtn = btn;
-
-            // Normal selection logic
-            buttons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
+            // 3. Update state
             state.currentSymbol = btn.dataset.symbol;
             state.currentName = btn.dataset.name;
             state.currentIcon = btn.dataset.icon;
 
+            // 4. Refresh UI
             updatePriceDisplay();
             addAlert(`Switched to ${state.currentName}`, 'info');
         });
     });
 }
 
+
+// Setup currency toggle with emoji + animation
+function setupCurrencyToggle() {
+    const currencyBtn = document.getElementById('currencyToggle');
+    if (!currencyBtn) return;
+
+    const icon = currencyBtn.querySelector('.fab-icon');
+
+    // 1) Set initial label based on default state (USDT)
+    if (icon) {
+        icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
+    }
+
+    // 2) Helper to play tiny pop/spin animation on the button
+    function playToggleAnimation() {
+        // remove class if present so animation can restart
+        currencyBtn.classList.remove('currency-toggle-pop');
+
+        // force reflow (hack so browser restarts the animation)
+        void currencyBtn.offsetWidth;
+
+        // add class -> triggers CSS transition
+        currencyBtn.classList.add('currency-toggle-pop');
+
+        // clean up after animation so next click works again
+        setTimeout(() => {
+            currencyBtn.classList.remove('currency-toggle-pop');
+        }, 200);
+    }
+
+    // 3) Click handler
+    currencyBtn.addEventListener('click', () => {
+        // flip USDT / INR
+        state.currency = state.currency === 'USDT' ? 'INR' : 'USDT';
+
+        // update emoji + text
+        if (icon) {
+            icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
+        }
+
+        // play button animation
+        playToggleAnimation();
+
+        // redraw prices in new currency (formatPrice already respects state.currency)
+        updatePriceDisplay();
+
+        // log alert
+        addAlert(`Currency switched to ${state.currency}`, 'info');
+    });
+}
+
+
+
+// Fetch USDT to INR conversion rate
+async function fetchUsdtToInrRate() {
+    try {
+        // Using a free API for USD to INR rate (approximating USDT ≈ USD)
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        state.usdtToInrRate = data.rates.INR || 83.5;
+    } catch (error) {
+        console.error('Error fetching USD to INR rate:', error);
+        // Fallback rate
+        state.usdtToInrRate = 83.5;
+    }
+}
 
 // Connect to Binance WebSocket
 function connectWebSocket() {
@@ -217,7 +285,11 @@ function updatePriceDisplay(previousPrice) {
 
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
-    if (symbolEl) symbolEl.textContent = `${state.currentSymbol}/USDT`;
+
+    // Update symbol display based on currency
+    if (symbolEl) {
+        symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
+    }
 
     // Ensure elements exist
     if (!currentPriceEl || !priceArrowEl || !priceChangeEl) return;
@@ -286,25 +358,28 @@ function updatePriceDisplay(previousPrice) {
     updateMarketMicrostructure(data);
     updateVolatilityMetrics(data);
     updateRiskIndicators(data);
-    document.getElementById("footerLivePrice").textContent = formatPrice(data.price);
-    // === Footer Live Price Color ===
-    const footerPriceEl = document.getElementById("footerLivePrice");
-    footerPriceEl.classList.remove("footer-price-green", "footer-price-red");
 
-    if (previousPrice !== null && previousPrice !== undefined) {
-        if (data.price > previousPrice) {
-            footerPriceEl.classList.add("footer-price-green");
-        } else if (data.price < previousPrice) {
-            footerPriceEl.classList.add("footer-price-red");
+    // Update footer live price
+    const footerPriceEl = document.getElementById("footerLivePrice");
+    if (footerPriceEl) {
+        footerPriceEl.textContent = formatPrice(data.price);
+
+        // Footer Live Price Color
+        footerPriceEl.classList.remove("footer-price-green", "footer-price-red");
+        if (previousPrice !== null && previousPrice !== undefined) {
+            if (data.price > previousPrice) {
+                footerPriceEl.classList.add("footer-price-green");
+            } else if (data.price < previousPrice) {
+                footerPriceEl.classList.add("footer-price-red");
+            }
         }
     }
-
 }
-
 
 // Update market microstructure metrics
 function updateMarketMicrostructure(data) {
     if (!data) return;
+
     const priceRange = data.high24h - data.low24h || 1;
     const pricePosition = (data.price - data.low24h) / priceRange;
 
@@ -336,6 +411,7 @@ function updateMarketMicrostructure(data) {
 // Update volatility metrics
 function updateVolatilityMetrics(data) {
     if (!data) return;
+
     const priceRange = data.high24h - data.low24h || 1;
     const avgPrice = (data.high24h + data.low24h) / 2 || data.price || 1;
     const volatility24h = (priceRange / avgPrice) * 100;
@@ -362,11 +438,15 @@ function updateVolatilityMetrics(data) {
 
 function updateRiskBars(values) {
     // values = { volatility: %, whale: %, volume: %, deviation: % }
+    const barVolatility = document.getElementById("bar-volatility");
+    const barWhale = document.getElementById("bar-whale");
+    const barVolume = document.getElementById("bar-volume");
+    const barDeviation = document.getElementById("bar-deviation");
 
-    document.getElementById("bar-volatility").style.width = values.volatility + "%";
-    document.getElementById("bar-whale").style.width = values.whale + "%";
-    document.getElementById("bar-volume").style.width = values.volume + "%";
-    document.getElementById("bar-deviation").style.width = values.deviation + "%";
+    if (barVolatility) barVolatility.style.width = values.volatility + "%";
+    if (barWhale) barWhale.style.width = values.whale + "%";
+    if (barVolume) barVolume.style.width = values.volume + "%";
+    if (barDeviation) barDeviation.style.width = values.deviation + "%";
 }
 
 // Update risk indicators
@@ -584,66 +664,416 @@ function setupThemeToggle() {
     themeBtn.addEventListener('click', () => {
         state.theme = state.theme === 'light' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', state.theme);
+        document.documentElement.setAttribute('data-color-scheme', state.theme);
         themeBtn.querySelector('.fab-icon').textContent = state.theme === 'light' ? '🌙' : '☀️';
         addAlert(`Theme changed to ${state.theme}`, 'info');
     });
 }
 
-// Setup export button
+// Two-page export: pulled-down verification panel, dual USDT/INR, no page numbers
 function setupExportButton() {
-    const exportBtn = document.getElementById('exportBtn');
+    const exportBtn = document.getElementById("exportBtn");
     if (!exportBtn) return;
-    exportBtn.addEventListener('click', () => {
-        const data = {
-            timestamp: new Date().toISOString(),
-            currentSymbol: state.currentSymbol,
-            priceData: state.priceData,
-            alerts: state.alerts
-        };
 
-        // Create PDF
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF();
+    exportBtn.addEventListener("click", () => {
+        try {
+            const currentData = state.priceData[state.currentSymbol];
+            if (!currentData) {
+                addAlert("No data available for export", "warning");
+                return;
+            }
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                addAlert("Export library not loaded.", "error");
+                return;
+            }
 
-        // Title
-        pdf.setFontSize(18);
-        pdf.text("Crypto View", 10, 15);
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF("p", "mm", "a4");
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
 
-        // Subtitle
-        pdf.setFontSize(12);
-        pdf.text(`Generated: ${new Date().toLocaleString()}`, 10, 25);
-        pdf.text(`Crypto: ${state.currentSymbol}`, 10, 35);
+            // ---------- helpers ----------
+            function n(v, d = 2) {
+                const num = Number(v);
+                if (!isFinite(num)) return "N/A";
+                return num.toFixed(d);
+            }
 
-        // Price Info
-        pdf.setFontSize(14);
-        pdf.text("Price Data:", 10, 50);
+            function usd(v) {
+                const num = Number(v);
+                if (!isFinite(num)) return "N/A";
+                return "$" + n(num, 2);
+            }
 
-        pdf.setFontSize(12);
-        pdf.text(`Current Price: ${formatPrice(state.priceData[state.currentSymbol].price)}`, 10, 60);
-        pdf.text(`24h High: ${formatPrice(state.priceData[state.currentSymbol].high24h)}`, 10, 70);
-        pdf.text(`24h Low: ${formatPrice(state.priceData[state.currentSymbol].low24h)}`, 10, 80);
-        pdf.text(`24h Volume: ${formatVolume(state.priceData[state.currentSymbol].volume24h)}`, 10, 90);
+            function inr(v) {
+                const num = Number(v);
+                if (!isFinite(num)) return "N/A";
+                return "INR " + n(num * state.usdtToInrRate, 2);
+            }
 
-        // Alerts
-        pdf.setFontSize(14);
-        pdf.text("Recent Alerts:", 10, 110);
+            function centered(text, x, y, size) {
+                if (size) pdf.setFontSize(size);
+                const w = pdf.getTextWidth(text);
+                pdf.text(text, x - w / 2, y);
+            }
 
-        let yPos = 120;
-        state.alerts.forEach(alert => {
+            function drawHeader(pageTitle, generatedText) {
+                pdf.setFillColor(245, 247, 255);
+                pdf.setDrawColor(200, 200, 200);
+                pdf.rect(10, 10, pageW - 20, 16, "F");
+                pdf.setFontSize(16);
+                pdf.setTextColor(20, 20, 20);
+                pdf.text(pageTitle, 14, 20);
+                pdf.setFontSize(9);
+                pdf.setTextColor(60, 60, 60);
+                pdf.text(generatedText, pageW - 65, 20);
+            }
+
+            function sectionHeader(title, y) {
+                pdf.setFontSize(13);
+                pdf.setTextColor(40, 40, 40);
+                pdf.text(title, 12, y);
+                pdf.setDrawColor(20, 120, 180);
+                pdf.setLineWidth(1);
+                pdf.line(12, y + 2, pageW - 12, y + 2);
+            }
+
+            function labelPair(label, value, y) {
+                pdf.setFontSize(10.5);
+                pdf.setTextColor(60, 60, 60);
+                pdf.text(label + ":", 14, y);
+                pdf.setTextColor(15, 15, 15);
+                pdf.text(value, 70, y);
+            }
+
+            function twoColumn(label1, value1, label2, value2, y) {
+                pdf.setFontSize(10.5);
+                pdf.setTextColor(60, 60, 60);
+                pdf.text(label1 + ":", 14, y);
+                pdf.setTextColor(15, 15, 15);
+                pdf.text(value1, 60, y);
+
+                pdf.setTextColor(60, 60, 60);
+                pdf.text(label2 + ":", pageW / 2 + 10, y);
+                pdf.setTextColor(15, 15, 15);
+                pdf.text(value2, pageW / 2 + 55, y);
+            }
+
+            // ---------- snapshot values ----------
+            const c = currentData;
+            const now = Date.now();
+            const last = c.lastUpdate || now;
+            const ageSec = Math.round((now - last) / 1000);
+            const wsStatus =
+                state.ws && state.ws.readyState === WebSocket.OPEN ?
+                "Connected" :
+                "Disconnected";
+            const quality =
+                ageSec <= 10 ? "FRESH" : ageSec <= 60 ? "RECENT" : "STALE";
+            const srcPath =
+                wsStatus === "Connected" ?
+                "Binance WebSocket (Primary)" :
+                "CoinGecko REST (Fallback)";
+
+            const range = c.high24h - c.low24h || 1;
+            const pos = (c.price - c.low24h) / range;
+            const ofi = (pos - 0.5) * 100;
+            const vSlope = c.priceChangePercent24h * 2;
+            const ba = pos * 100;
+
+            const avg = (c.high24h + c.low24h) / 2 || c.price || 1;
+            const vol24 = (range / avg) * 100;
+            const vol4 = vol24 / 6;
+            const vol1 = vol24 / 24;
+
+            const volScore = Math.min(vol24, 100);
+            const liq = Math.min((c.volume24h / 1e6) * 10, 100);
+            const whale = Math.min((c.volume24h / c.price) % 100, 100);
+            const dev = Math.min(
+                Math.abs((c.price - c.low24h) / c.price) * 100,
+                100
+            );
+
+            // =====================================================
+            // PAGE 1 – MARKET ANALYTICS
+            // =====================================================
+            drawHeader(
+                "Crypto View - Real-Time Market Report",
+                "Generated: " + new Date().toLocaleString()
+            );
+
+            let y = 32;
+
+            // Snapshot Metadata
+            sectionHeader("Snapshot Metadata", y);
+            y += 10;
+            twoColumn(
+                "Asset",
+                state.currentName + " (" + state.currentSymbol + ")",
+                "Snapshot Quality",
+                quality,
+                y
+            );
+            y += 7;
+            twoColumn(
+                "Data Age",
+                ageSec + " sec",
+                "WebSocket",
+                wsStatus,
+                y
+            );
+            y += 7;
+            // Base pair is always /USDT for streaming, regardless of UI currency
+            twoColumn(
+                "Base Pair",
+                state.currentSymbol + "/USDT",
+                "Data Points",
+                String(state.dataPointsCount || 0),
+                y
+            );
+            y += 7;
+            labelPair("Source Path", srcPath, y);
+            y += 10;
+
+            // Price Summary – include USDT + INR for all key metrics
+            sectionHeader("Price Summary (Live)", y);
+            y += 10;
+            // Current price in both
+            twoColumn(
+                "Current Price (USDT)",
+                usd(c.price),
+                "Current Price (INR)",
+                inr(c.price),
+                y
+            );
+            y += 7;
+            // 24h High both
+            twoColumn(
+                "24h High (USDT)",
+                usd(c.high24h),
+                "24h High (INR)",
+                inr(c.high24h),
+                y
+            );
+            y += 7;
+            // 24h Low both
+            twoColumn(
+                "24h Low (USDT)",
+                usd(c.low24h),
+                "24h Low (INR)",
+                inr(c.low24h),
+                y
+            );
+            y += 7;
+            // Volume in both
+            twoColumn(
+                "Volume (24h, USDT)",
+                usd(c.volume24h),
+                "Volume (24h, INR)",
+                inr(c.volume24h),
+                y
+            );
+            y += 7;
+            // Change (percentage)
+            labelPair("Change (24h)", n(c.priceChangePercent24h) + "%", y);
+            y += 12;
+
+            // Market Microstructure
+            sectionHeader("Market Microstructure", y);
+            y += 10;
+            twoColumn(
+                "Order Flow Imbalance",
+                n(ofi),
+                "Bid/Ask Imbalance",
+                n(ba),
+                y
+            );
+            y += 7;
+            labelPair("Volume Slope", n(vSlope), y);
+            y += 12;
+
+            // Volatility Metrics
+            sectionHeader("Volatility Metrics", y);
+            y += 10;
+            twoColumn(
+                "24h Volatility",
+                n(vol24) + "%",
+                "4h Volatility",
+                n(vol4) + "%",
+                y
+            );
+            y += 7;
+            labelPair("1h Volatility", n(vol1) + "%", y);
+            y += 12;
+
+            // Risk Indicators
+            sectionHeader("Risk Indicators", y);
+            y += 10;
+            twoColumn(
+                "Volatility Risk",
+                n(volScore) + "%",
+                "Whale Activity",
+                n(whale) + "%",
+                y
+            );
+            y += 7;
+            twoColumn(
+                "Volume Risk",
+                n(liq) + "%",
+                "Price Deviation",
+                n(dev) + "%",
+                y
+            );
+            y += 12;
+
+            // Top Movers
+            sectionHeader("Top Market Movers", y);
+            y += 10;
+            const movers = Object.entries(state.priceData)
+                .map(([sym, d]) => ({ s: sym, c: d.priceChangePercent24h }))
+                .sort((a, b) => Math.abs(b.c) - Math.abs(a.c))
+                .slice(0, 5);
+            pdf.setFontSize(10.5);
+            pdf.setTextColor(60, 60, 60);
+            movers.forEach((m, i) => {
+                const row = (i + 1) + ". " + m.s + ": ";
+                const val = (m.c >= 0 ? "+" : "") + n(m.c) + "%";
+                pdf.text(row, 14, y);
+                pdf.setTextColor(15, 15, 15);
+                pdf.text(val, 70, y);
+                pdf.setTextColor(60, 60, 60);
+                y += 6;
+            });
+
+            // =====================================================
+            // PAGE 2 – ALERTS + VERIFICATION + LINKS
+            // =====================================================
+            pdf.addPage();
+            drawHeader(
+                "Crypto View - Alerts & Verification",
+                "Generated: " + new Date().toLocaleString()
+            );
+            y = 32;
+
+            // Recent Alerts
+            sectionHeader("Recent Alerts", y);
+            y += 10;
+            pdf.setFontSize(10.5);
+            pdf.setTextColor(60, 60, 60);
+
+            if (!state.alerts || state.alerts.length === 0) {
+                pdf.text("- No alerts available", 14, y);
+                y += 6;
+            } else {
+                state.alerts.forEach(a => {
+                    const line =
+                        "[" + a.time + "] " + String(a.message || "");
+                    pdf.text(line, 14, y);
+                    y += 6;
+                    if (y > pageH - 80) {
+                        pdf.addPage();
+                        drawHeader(
+                            "Crypto View - Alerts & Verification (cont.)",
+                            "Generated: " + new Date().toLocaleString()
+                        );
+                        y = 32;
+                        sectionHeader("Recent Alerts (cont.)", y);
+                        y += 10;
+                    }
+                });
+            }
+
+            // ── Pull the verification panel DOWN near bottom ──
+            const panelHeight = 38;
+            const bottomMargin = 22;
+            const desiredTop = pageH - bottomMargin - panelHeight;
+            const panelTop = Math.max(y + 4, desiredTop);
+
+            pdf.setDrawColor(120, 120, 120);
+            pdf.setFillColor(250, 250, 250);
+            pdf.rect(10, panelTop, pageW - 20, panelHeight, "FD");
+
             pdf.setFontSize(11);
-            pdf.text(`• [${alert.time}] ${alert.message}`, 10, yPos);
-            yPos += 8;
-        });
+            pdf.setTextColor(20, 20, 20);
+            pdf.text("DATA VERIFICATION PANEL", 14, panelTop + 7);
 
-        // Save file
-        pdf.save(`crypto-report-${Date.now()}.pdf`);
+            pdf.setFontSize(9);
+            pdf.setTextColor(40, 40, 40);
+            pdf.text(
+                "Snapshot generated from live in-memory data at export moment.",
+                14,
+                panelTop + 13
+            );
+            pdf.text(
+                "Quality: " +
+                quality +
+                "    WebSocket: " +
+                wsStatus +
+                "    Age: " +
+                ageSec +
+                " sec",
+                14,
+                panelTop + 19
+            );
+            pdf.text(
+                "Source Path: " + srcPath,
+                14,
+                panelTop + 25
+            );
+            pdf.text(
+                "For analytics only. Not financial advice.",
+                14,
+                panelTop + 31
+            );
+
+            // Seal
+            const cx = pageW - 32;
+            const cy = panelTop + panelHeight / 2;
+            pdf.setDrawColor(160, 0, 0);
+            pdf.setLineWidth(1.2);
+            pdf.circle(cx, cy, 14);
+            pdf.setLineWidth(0.7);
+            pdf.circle(cx, cy, 10);
+            pdf.setTextColor(160, 0, 0);
+
+            centered("VERIFIED", cx, cy + 2, 7);
 
 
-        addAlert('Data exported successfully', 'success');
+            // ---------- FOOTER ON EVERY PAGE ----------
+            const githubUrl = "https://github.com/Ajith-data-analyst/Crypto_View";
+            const liveUrl = "https://ajith-data-analyst.github.io/crypto_view/";
+            const copyrightText =
+                "© 2025 Crypto View | All rights reserved | Live Crypto Price Analytics";
+
+            const totalPages = pdf.internal.getNumberOfPages();
+            for (let p = 1; p <= totalPages; p++) {
+                pdf.setPage(p);
+                pdf.setFontSize(8);
+
+                // Left footer: CRYPTO VIEW (clickable)
+                pdf.setTextColor(40, 70, 160);
+                pdf.textWithLink("CRYPTO VIEW", 12, pageH - 8, { url: liveUrl });
+
+                // Right footer: copyright (clickable)
+                pdf.setTextColor(40, 40, 40);
+                const cw = pdf.getTextWidth(copyrightText);
+                const cxRight = pageW - 12 - cw;
+                pdf.textWithLink(copyrightText, cxRight, pageH - 8, {
+                    url: githubUrl
+                });
+            }
+
+            pdf.save("crypto-report-" + Date.now() + ".pdf");
+            addAlert("Exported PDF successfully", "success");
+        } catch (err) {
+            console.error(err);
+            addAlert("Export failed", "error");
+        }
     });
 }
 
-// ----------------- UNIVERSAL SEARCH: replace setupSearchPanel() with this -----------------
+
+// ----------------- UNIVERSAL SEARCH -----------------
 function setupSearchPanel() {
     const searchBtn = document.getElementById('searchBtn');
     const searchPanel = document.getElementById('searchPanel');
@@ -661,11 +1091,9 @@ function setupSearchPanel() {
         { id: 'vol1h', title: '1h Volatility', type: 'metric' },
         { id: 'vol4h', title: '4h Volatility', type: 'metric' },
         { id: 'vol24h', title: '24h Volatility', type: 'metric' },
-        { id: 'moversContainer', title: 'Top Movers', type: 'metric' },
+        { id: 'top-movers', title: 'Top Movers', type: 'metric' },
         { id: 'anomalyContainer', title: 'Anomaly Detection', type: 'metric' },
-        { id: 'alertsContainer', title: 'Alert Center', type: 'metric' },
-        { id: 'marketRisk', title: 'Market Risk', type: 'metric' },
-        { id: 'liquidityScore', title: 'Liquidity Score', type: 'metric' }
+        { id: 'alertsContainer', title: 'Alert Center', type: 'metric' }
     ];
 
     // State for keyboard navigation
@@ -719,7 +1147,7 @@ function setupSearchPanel() {
     function buildIndex() {
         const coins = Object.keys(state.priceData || {}).map(symbol => {
             const d = state.priceData[symbol] || {};
-            const name = (d.name || symbol); // if you add name in data, good
+            const name = (d.name || symbol);
             const subtitle = d.price ? formatPrice(d.price) : '--';
             return {
                 type: 'coin',
@@ -935,8 +1363,6 @@ function setupSearchPanel() {
 }
 // ----------------- END UNIVERSAL SEARCH -----------------
 
-
-
 // Select cryptocurrency from search
 function selectCrypto(symbol) {
     const btn = document.querySelector(`[data-symbol="${symbol}"]`);
@@ -949,30 +1375,76 @@ function selectCrypto(symbol) {
 
 // Utility: Format price
 function formatPrice(price) {
+    if (price === null || price === undefined || Number.isNaN(price)) return '--';
+
     const symbol = state.currentSymbol;
+    let formattedPrice;
 
     // Coins that should always show 4 decimals
     const fourDecimalCoins = ["DOT", "SOL", "BNB", "XRP", "LTC"];
 
     if (fourDecimalCoins.includes(symbol)) {
-        return `$${Number(price).toFixed(4)}`;
+        formattedPrice = Number(price).toFixed(4);
+    } else if (price >= 1000) {
+        formattedPrice = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (price >= 1) {
+        formattedPrice = price.toFixed(2);
+    } else {
+        formattedPrice = price.toFixed(6);
     }
 
-    // Default formatting rules
-    if (price >= 1000) {
-        return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    } else if (price >= 1) {
-        return `$${price.toFixed(2)}`;
-    } else {
-        return `$${price.toFixed(6)}`;
+    // Apply currency conversion if INR is selected
+    if (state.currency === 'INR') {
+        const inrPrice = price * state.usdtToInrRate;
+        if (price >= 1000) {
+            formattedPrice = inrPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        } else if (price >= 1) {
+            formattedPrice = inrPrice.toFixed(2);
+        } else {
+            formattedPrice = inrPrice.toFixed(6);
+        }
+        return `₹${formattedPrice}`;
     }
+
+    return `$${formattedPrice}`;
 }
 
+// Utility: Format price in INR for reports
+function formatPriceInr(price) {
+    if (price === null || price === undefined || Number.isNaN(price)) return '--';
+
+    const inrPrice = price * state.usdtToInrRate;
+    let formattedPrice;
+
+    if (inrPrice >= 1000) {
+        formattedPrice = inrPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (inrPrice >= 1) {
+        formattedPrice = inrPrice.toFixed(2);
+    } else {
+        formattedPrice = inrPrice.toFixed(6);
+    }
+
+    return `₹${formattedPrice}`;
+}
 
 // Utility: Format volume
 function formatVolume(volume) {
     if (volume === null || volume === undefined || Number.isNaN(volume)) return '--';
     const v = Number(volume);
+
+    // Apply currency conversion if INR is selected
+    if (state.currency === 'INR') {
+        const inrVolume = v * state.usdtToInrRate;
+        if (inrVolume >= 1e9) {
+            return `₹${(inrVolume / 1e9).toFixed(2)}B`;
+        } else if (inrVolume >= 1e6) {
+            return `₹${(inrVolume / 1e6).toFixed(2)}M`;
+        } else if (inrVolume >= 1e3) {
+            return `₹${(inrVolume / 1e3).toFixed(2)}K`;
+        }
+        return `₹${inrVolume.toFixed(2)}`;
+    }
+
     if (v >= 1e9) {
         return `$${(v / 1e9).toFixed(2)}B`;
     } else if (v >= 1e6) {
@@ -986,7 +1458,7 @@ function formatVolume(volume) {
 // Utility: Format uptime
 function formatUptime(ms) {
     const seconds = Math.floor(ms / 1000);
-    const hours = Math.floor(seconds / 3600);
+
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
