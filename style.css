@@ -319,6 +319,36 @@ body {
 }
 
 
+/* Mobile: keep same UI, force 4 + 4 layout */
+
+@media (max-width: 768px) {
+    .crypto-selector {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--space-4);
+        /* smaller gap on mobile */
+        margin: 16px auto;
+        width: 100%;
+    }
+    .crypto-btn {
+        /* 
+           Each button width = (100% - total gaps) / 4
+           total gaps in a row = 3 * gap
+        */
+        flex: 0 0 calc((100% - (3 * var(--space-4))) / 4);
+        justify-content: center;
+        text-align: center;
+        padding: var(--space-8) var(--space-12);
+        font-size: var(--font-size-sm);
+        box-sizing: border-box;
+        min-width: 0;
+        /* allow shrink so names don't break layout */
+    }
+}
+
+
 /* Price Card */
 
 .price-card {

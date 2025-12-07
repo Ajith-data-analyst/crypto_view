@@ -1040,7 +1040,7 @@ function setupExportButton() {
 
 
             // ---------- FOOTER ON EVERY PAGE ----------
-            const githubUrl = "https://github.com/Ajith-data-analyst/Crypto_View";
+            const githubUrl = "https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt";
             const liveUrl = "https://ajith-data-analyst.github.io/crypto_view/";
             const copyrightText =
                 "© 2025 Crypto View | All rights reserved | Live Crypto Price Analytics";
