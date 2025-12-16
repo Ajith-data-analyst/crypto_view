@@ -1,0 +1,170 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This is a modified ONE COLUMN version of
+% the following template:
+% 
+% Deedy - One Page Two Column Resume
+% LaTeX Template
+% Version 1.1 (30/4/2014)
+% 
+% Original author:
+% Debarghya Das (http://debarghyadas.com)
+% 
+% Original repository:
+% https://github.com/deedydas/Deedy-Resume
+% https://encr.pw/ajith-da
+% IMPORTANT: THIS TEMPLATE NEEDS TO BE COMPILED WITH XeLaTeX
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[a4paper]{deedy-resume-openfont}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{enumitem}
+
+\begin{document}
+
+\lastupdated
+
+\namesection{AJITH}{RAMESH}{%
+    \href{tel:+919345264522}{+91 9345264522} |
+    \href{mailto:ajithramesh2020@gmail.com}{ajithramesh2020@gmail.com} |   \href{https://bit.ly/Ajith-portfolio}{bit.ly/Ajith-portfolio} 
+
+    \href{https://www.linkedin.com/in/ajith-ramesh-data-analyst/}{LinkedIn} | 
+    \href{https://github.com/Ajith-data-analyst}{GitHub} | 
+ \href{https://wa.me/9345264522}{WhatsApp}
+      
+}
+
+
+\section{PROFESSIONAL SUMMARY}
+    \begin{itemize}[leftmargin=*, noitemsep, topsep=0pt]
+       
+AI-augmented Data Analyst, actively learning SQL and Python, with strong skills in data profiling, reconciliation, ETL, and visualization (Power BI/Tableau). Skilled at preparing audit-ready documentation, building scalable queries, and delivering actionable insights. Collaborative, detail-oriented, and driven to support assurance analytics with accuracy, efficiency, and measurable business impact.
+
+
+    \end{itemize}
+
+    
+
+\section{Education}
+
+% --- Bachelor Degree ---
+\descript{
+    \href{}
+    {\textbf{Bachelor in Computer Science (Specialization in Artificial Intelligence)}}
+}
+\location{Sathyabama Institute of Science and Technology}
+\location{CGPA: 6.74/10.00 \quad | \quad Expected: May 2026}
+\sectionsep
+
+% --- School ---
+\descript{
+    \href{}
+    {\textbf{Zion Matriculation Higher Secondary School}}
+}
+\location{Grade: 73.33/100.00 \quad | \quad Graduated: May 2023}
+\sectionsep
+
+\begin{minipage}[t]{0.48\textwidth}
+    \section{Technical Skills}
+    \begin{itemize}[noitemsep, topsep=0pt]
+                \item SQL \& Database Management
+        \item Ai Prompting \& Excel
+         \item Data Visualization \& Reporting - Power BI 
+       
+        \item Python (developing proficiency)
+        \item ETL
+       
+          \
+    \end{itemize}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+    \section{Core Skills}
+    \begin{itemize}[noitemsep, topsep=0pt]
+        \item Statistics \& Industry specific
+knowledge
+        \item Team Collaboration \& Quick Learner
+        \item Problem-Solving Attitude
+       
+        \item Effective Communication
+          \item Data Analysis \& Profiling
+    \end{itemize}
+\end{minipage}
+
+
+
+
+
+
+
+\section{Project Experience}
+
+\runsection
+\descript{\href{https://ajith-data-analyst.github.io/Portfolio/home.html}{Crypto View}}
+\descript{\href{https://ajith-data-analyst.github.io/Portfolio/home.html}{real-time crypto dashboard} \ | \ November 2025}
+
+\begin{itemize}[noitemsep, topsep=0pt]
+    \item \href{https://ajith-data-analyst.github.io/Portfolio/home.html}{Built WebSocket streaming with Binance API and CoinGecko fallback}, ensuring 99\% uptime and sub-50ms updates for 10+ cryptocurrencies.
+    \item \href{https://ajith-data-analyst.github.io/Portfolio/home.html}{Developed real-time dashboards} with volatility gauges, risk indicators, and market metrics using JavaScript and CSS.
+    \item \href{https://ajith-data-analyst.github.io/Portfolio/home.html}{Added universal search (Ctrl+K)} for instant navigation across coins, metrics, and alerts.
+    \item \href{https://ajith-data-analyst.github.io/Portfolio/home.html}{Automated anomaly detection} for price spikes/drops and integrated one-click PDF reporting via jsPDF.
+    \item \href{https://ajith-data-analyst.github.io/Portfolio/home.html}{Optimized runtime using IntersectionObserver and debounced search}, lowering CPU usage by 40\%.
+\end{itemize}
+
+\sectionsep
+
+
+
+
+
+\runsection
+\descript{\href{https://github.com/Ajith-data-analyst/expense-tracker}{Expense Analysis}}
+\descript{\href{https://github.com/Ajith-data-analyst/expense-tracker}{expense tracking web app} | october 2025}
+\vspace{0.5em}
+\begin{itemize}[noitemsep, topsep=0pt]
+    \item \href{https://github.com/Ajith-data-analyst/expense-tracker}{Built FastAPI backend} with 15+ endpoints for CRUD operations, analytics, and secure user authentication.
+    \item \href{https://github.com/Ajith-data-analyst/expense-tracker}{Developed Streamlit frontend} with 25 dashboards using Plotly for data visualization and management.
+    \item \href{https://github.com/Ajith-data-analyst/expense-tracker}{Implemented multi-user authentication} with phone-based login, password reset, and admin controls.
+    \item \href{https://github.com/Ajith-data-analyst/expense-tracker}{Engineered analytics} to process transaction data, generating spending trends and automated budget alerts.
+    \item \href{https://github.com/Ajith-data-analyst/expense-tracker}{Deployed on Render} using two coordinated services for reliable hosting and seamless API communication.
+\end{itemize}
+
+\sectionsep
+
+
+\runsection
+\descript{\href{https://github.com/Ajith-data-analyst/Business-Insights-360}{Business Insights 360 — Power BI Dashboard}}
+\descript{\href{https://www.atliq.com/}{AtliQ Technologies} \ | \ August 2025}
+\begin{itemize}[noitemsep, topsep=0pt]
+    \item \href{https://github.com/Ajith-data-analyst/Business-Insights-360}{Reporting was slow, inconsistent, and multi-currency data was scattered.}
+    \item \href{https://github.com/Ajith-data-analyst/Business-Insights-360}{Delivered an executive-ready Power BI dashboard with standardized data, automated cleansing, INR conversion, and real-time KPIs.}
+    \item \href{https://github.com/Ajith-data-analyst/Business-Insights-360}{Built interactive dashboards using Power Query ETL, implemented multi-currency and INR conversion, developed advanced DAX KPIs, and designed KPI cards, slicers, and drill-downs highlighting spend trends.}
+    \item \href{https://github.com/Ajith-data-analyst/Business-Insights-360}{Reduced reporting effort by 80\% and enabled real-time executive insights for faster decision-making.}
+\end{itemize}
+
+
+
+
+\sectionsep
+
+
+
+
+\section{Certification}
+
+\begin{minipage}[t]{0.48\textwidth}
+\href{https://ajith-data-analyst.github.io/Portfolio/certification.html#section3}{\runsubsection{Data Analytics Bootcamp}}\\
+\location{\textit{Codebasics}}
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\href{https://ajith-data-analyst.github.io/Portfolio/certification.html#section5}{\runsubsection{Gen AI Data Analyst Specialization}}\\
+\location{\textit{Coursera }}
+\end{minipage}
+
+
+
+
+
+\sectionsep
+\end{document}
