@@ -27,6 +27,7 @@
         </div>
     </header>
     <div class="footer-wrap"></div>
+
     <!-- Main Container -->
     <main class="main-container">
         <!-- Crypto Selector -->
@@ -63,7 +64,6 @@
                 <span class="crypto-icon">Ð</span>
                 <span class="crypto-name">DOGE</span>
             </button>
-
             <button class="crypto-btn" data-symbol="LTC" data-name="Litecoin" data-icon="Ł">
                 <span class="crypto-icon">Ł</span>
                 <span class="crypto-name">LTC</span>
@@ -182,7 +182,6 @@
 
         <!-- New Two-Column Layout -->
         <div class="stats-grid">
-
             <!-- LEFT: TOP MOVERS -->
             <div class="stats-card">
                 <h3>Top Movers</h3>
@@ -192,39 +191,32 @@
             <!-- RIGHT: RISK INDICATORS -->
             <div class="stats-card">
                 <h3>Risk Indicators</h3>
-
                 <div class="risk-item">
                     <span>Volatility</span>
                     <div class="risk-bar">
                         <div id="bar-volatility"></div>
                     </div>
                 </div>
-
                 <div class="risk-item">
                     <span>Whale Activity</span>
                     <div class="risk-bar">
                         <div id="bar-whale"></div>
                     </div>
                 </div>
-
                 <div class="risk-item">
                     <span>Unusual Volume</span>
                     <div class="risk-bar">
                         <div id="bar-volume"></div>
                     </div>
                 </div>
-
                 <div class="risk-item">
                     <span>Price Deviation</span>
                     <div class="risk-bar">
                         <div id="bar-deviation"></div>
                     </div>
                 </div>
-
             </div>
-
         </div>
-
 
         <!-- Alert Center -->
         <section class="panel">
@@ -236,6 +228,15 @@
                 </div>
             </div>
         </section>
+
+        <!-- Restore Mode Indicator -->
+        <div id="restoreModeIndicator" style="display: none;" class="panel">
+            <div class="anomaly-item status--warning">
+                <span class="anomaly-icon">📂</span>
+                <span class="anomaly-text" id="restoreModeText">RESTORED FROM SNAPSHOT — LIVE DATA DISABLED</span>
+                <button id="exitRestoreModeBtn" style="margin-left: auto; padding: 4px 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-base); cursor: pointer; font-size: var(--font-size-sm);">Exit Restore Mode</button>
+            </div>
+        </div>
     </main>
 
     <!-- Floating Action Buttons -->
@@ -246,13 +247,29 @@
         <button class="fab" id="exportBtn" title="Export Data">
             <span class="fab-icon">📥</span>
         </button>
+        <div class="export-dropdown" id="exportDropdown">
+            <div class="export-option" data-option="pdf">Export as PDF</div>
+            <div class="export-option" data-option="json">Export as JSON</div>
+            <div class="export-option" data-option="both">Export as BOTH</div>
+            <div class="export-option" data-option="cancel">Cancel</div>
+        </div>
+        <!-- NEW: AI Summary Button -->
+        <button class="fab" id="aiSummaryBtn" title="AI Summary">
+            <span class="fab-icon">🧠</span>
+        </button>
         <button class="fab" id="searchBtn" title="Search">
             <span class="fab-icon">🔍</span>
         </button>
         <button class="fab" id="currencyToggle" title="Toggle Currency">
-            <span class="fab-icon">USDT</span>
+            <span class="fab-icon">₹</span>
+        </button>
+        <button class="fab" id="importBtn" title="Import Snapshot">
+            <span class="fab-icon">📂</span>
         </button>
     </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importFileInput" accept=".json" style="display: none;">
 
     <!-- Search Panel -->
     <div class="search-panel" id="searchPanel">
@@ -266,16 +283,40 @@
         </div>
     </div>
 
+    <!-- NEW: AI Summary Panel -->
+    <div id="aiSummaryPanel" class="ai-summary-panel" style="display: none;">
+        <div class="ai-panel-header">
+            <div class="ai-drag-handle">🧠 AI Market Summary</div>
+            <div class="ai-panel-controls">
+                <button class="ai-control-btn" title="Copy" data-action="copy">📋</button>
+                <button class="ai-control-btn" title="Regenerate" data-action="regenerate">🔁</button>
+                <button class="ai-control-btn" title="New Summary" data-action="new">🔄</button>
+                <button class="ai-control-btn" title="Pin" data-action="pin">📌</button>
+                <button class="ai-control-btn" title="Close" data-action="close">❌</button>
+            </div>
+        </div>
+        <div class="ai-panel-content">
+            <div class="ai-loading" id="aiLoading">
+                <div class="ai-loading-spinner"></div>
+                <div class="ai-loading-text">Generating AI summary...</div>
+            </div>
+            <div class="ai-summary-text" id="aiSummaryText"></div>
+            <div class="ai-metadata" id="aiMetadata"></div>
+            <div class="ai-controls-bottom">
+                <button class="ai-action-btn" data-action="share">📤 Share</button>
+                <button class="ai-action-btn" data-action="download">💾 Download</button>
+                <button class="ai-action-btn" data-action="close">Close</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">
-
         <div class="footer-content">
             <div class="footer-item">
                 <span class="footer-label">Connection</span>
                 <span class="footer-value" id="footerConnection">Active</span>
             </div>
-
             <div class="footer-item">
                 <span class="footer-label">Latency</span>
                 <span class="footer-value" id="latency">--ms</span>
@@ -292,16 +333,13 @@
 
     <!-- Copyright Footer -->
     <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
-
         <!-- Top Grid Section -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
-
             <!-- Domains & Technologies -->
             <div>
                 <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
                     Domains & Technologies
                 </h4>
-
                 <div style="display: flex; flex-direction: column; gap: var(--space-4);">
                     <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">⚡ FinTech & Crypto Markets</span>
                     <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">📈 Data Analytics & Visualization</span>
@@ -315,7 +353,6 @@
                 <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
                     APIs
                 </h4>
-
                 <div style="display: flex; flex-direction: column; gap: var(--space-4);">
                     <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
                     <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
@@ -327,11 +364,10 @@
                 <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
                     Status
                 </h4>
-
                 <div style="display: flex; flex-direction: column; gap: var(--space-4);">
                     <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
                     <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Last updated: <span id="footerLastUpdate">Now</span></div>
-                    <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
+                    <div style="font-size: var(--font-size-sm;">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
                     <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
                 </div>
             </div>
@@ -339,8 +375,8 @@
 
         <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
             <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
-            © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
-        </a>
+                © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
+            </a>
         </div>
     </footer>
 
