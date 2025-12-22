@@ -7,6 +7,7 @@
     <title>Crypto View</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 </head>
 
 <body>
@@ -256,12 +257,25 @@
         <button class="fab" id="searchBtn" title="Search">
             <span class="fab-icon">🔍</span>
         </button>
+        <button class="fab" id="aiSummaryBtn" title="AI Summary">
+    <span class="fab-icon">🧠</span>
+</button>
+
         <button class="fab" id="currencyToggle" title="Toggle Currency">
             <span class="fab-icon">USDT</span>
         </button>
         <button class="fab" id="importBtn" title="Import Snapshot">
             <span class="fab-icon">📂</span>
         </button>
+    </div>
+    <div id="aiSummaryPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;">
+        <div style="max-width:600px;margin:8% auto;background:var(--color-surface);padding:24px;border-radius:12px">
+            <h3>🧠 AI Summary</h3>
+            <p id="aiSummaryText">Generating summary…</p>
+            <div style="text-align:right">
+                <button onclick="closeAISummary()">Close</button>
+            </div>
+        </div>
     </div>
 
     <!-- Hidden file input for import -->

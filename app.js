@@ -2175,6 +2175,54 @@ function formatVolume(volume) {
     }
     return `$${v.toFixed(2)}`;
 }
+async function generateRealAISummary(snapshot) {
+    const s = snapshot.snapshot;
+    const sym = s.applicationState.currentSymbol;
+    const d = s.priceData[sym];
+
+    const prompt = `
+Summarize the crypto market briefly:
+
+Asset: ${s.applicationState.currentName} (${sym})
+Price: ${d.price}
+24h Change: ${d.priceChangePercent24h}%
+24h Volume: ${d.volume24h}
+
+Give a short human-friendly summary.
+`;
+
+    const response = await fetch("https://crypto-ai-summary.ajithramesh2020.workers.dev", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt })
+    });
+
+    const data = await response.json();
+    return data.text;
+}
+
+function closeAISummary() {
+    const panel = document.getElementById("aiSummaryPanel");
+    if (panel) panel.style.display = "none";
+}
+
+document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
+    document.getElementById("aiSummaryPanel").style.display = "block";
+    document.getElementById("aiSummaryText").textContent = "AI is generating summary…";
+
+    try {
+        const snapshot = generateSnapshot();
+        const summary = await generateRealAISummary(snapshot);
+        document.getElementById("aiSummaryText").textContent = summary;
+    } catch (err) {
+        document.getElementById("aiSummaryText").textContent =
+            "AI service unavailable. Try again.";
+        console.error(err);
+    }
+});
+
 
 // Make selectCrypto global
 window.selectCrypto = selectCrypto;
