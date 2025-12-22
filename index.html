@@ -253,15 +253,11 @@
             <div class="export-option" data-option="both">Export as BOTH</div>
             <div class="export-option" data-option="cancel">Cancel</div>
         </div>
-        <!-- NEW: AI Summary Button -->
-        <button class="fab" id="aiSummaryBtn" title="AI Summary">
-            <span class="fab-icon">🧠</span>
-        </button>
         <button class="fab" id="searchBtn" title="Search">
             <span class="fab-icon">🔍</span>
         </button>
         <button class="fab" id="currencyToggle" title="Toggle Currency">
-            <span class="fab-icon">₹</span>
+            <span class="fab-icon">USDT</span>
         </button>
         <button class="fab" id="importBtn" title="Import Snapshot">
             <span class="fab-icon">📂</span>
@@ -280,33 +276,6 @@
         <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
         <div class="search-results" id="searchResults">
             <div class="search-result-item">Start typing to search...</div>
-        </div>
-    </div>
-
-    <!-- NEW: AI Summary Panel -->
-    <div id="aiSummaryPanel" class="ai-summary-panel" style="display: none;">
-        <div class="ai-panel-header">
-            <div class="ai-drag-handle">🧠 AI Market Summary</div>
-            <div class="ai-panel-controls">
-                <button class="ai-control-btn" title="Copy" data-action="copy">📋</button>
-                <button class="ai-control-btn" title="Regenerate" data-action="regenerate">🔁</button>
-                <button class="ai-control-btn" title="New Summary" data-action="new">🔄</button>
-                <button class="ai-control-btn" title="Pin" data-action="pin">📌</button>
-                <button class="ai-control-btn" title="Close" data-action="close">❌</button>
-            </div>
-        </div>
-        <div class="ai-panel-content">
-            <div class="ai-loading" id="aiLoading">
-                <div class="ai-loading-spinner"></div>
-                <div class="ai-loading-text">Generating AI summary...</div>
-            </div>
-            <div class="ai-summary-text" id="aiSummaryText"></div>
-            <div class="ai-metadata" id="aiMetadata"></div>
-            <div class="ai-controls-bottom">
-                <button class="ai-action-btn" data-action="share">📤 Share</button>
-                <button class="ai-action-btn" data-action="download">💾 Download</button>
-                <button class="ai-action-btn" data-action="close">Close</button>
-            </div>
         </div>
     </div>
 

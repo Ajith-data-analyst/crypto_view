@@ -179,7 +179,9 @@ body {
     padding-bottom: 60px;
 }
 
+
 /* Header */
+
 .header {
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-card-border);
@@ -263,7 +265,9 @@ body {
     }
 }
 
+
 /* Main Container */
+
 .main-container {
     max-width: 1400px;
     margin: 0 auto;
@@ -272,7 +276,9 @@ body {
     gap: var(--space-24);
 }
 
+
 /* Crypto Selector */
+
 .crypto-selector {
     display: flex;
     justify-content: center;
@@ -312,7 +318,9 @@ body {
     font-size: var(--font-size-xl);
 }
 
+
 /* Mobile: keep same UI, force 4 + 4 layout */
+
 @media (max-width: 768px) {
     .crypto-selector {
         display: flex;
@@ -340,7 +348,9 @@ body {
     }
 }
 
+
 /* Price Card */
+
 .price-card {
     background: var(--color-surface);
     border: 1px solid var(--color-card-border);
@@ -429,7 +439,9 @@ body {
     color: var(--color-text);
 }
 
+
 /* Panel */
+
 .panel {
     background: var(--color-surface);
     border: 1px solid var(--color-card-border);
@@ -444,7 +456,9 @@ body {
     color: var(--color-text);
 }
 
+
 /* Microstructure */
+
 .microstructure-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -485,7 +499,9 @@ body {
     border-radius: var(--radius-full);
 }
 
+
 /* Volatility */
+
 .volatility-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -531,7 +547,9 @@ body {
     border-radius: var(--radius-full);
 }
 
+
 /* Anomaly Detection */
+
 .anomaly-container {
     display: flex;
     flex-direction: column;
@@ -569,7 +587,9 @@ body {
     font-size: var(--font-size-xl);
 }
 
+
 /* Top Movers */
+
 .movers-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -605,7 +625,9 @@ body {
     color: var(--color-error);
 }
 
+
 /* Risk Indicators */
+
 .risk-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -637,7 +659,9 @@ body {
     color: var(--color-text-secondary);
 }
 
+
 /* Alert Center */
+
 .alerts-container {
     display: flex;
     flex-direction: column;
@@ -678,7 +702,9 @@ body {
     min-width: 50px;
 }
 
+
 /* Floating Action Buttons */
+
 .fab-container {
     position: fixed;
     bottom: 80px;
@@ -713,7 +739,9 @@ body {
     font-size: 24px;
 }
 
+
 /* Search Panel */
+
 .search-panel {
     position: fixed;
     top: 50%;
@@ -797,7 +825,9 @@ body {
     background: var(--color-secondary);
 }
 
+
 /* Footer */
+
 .footer {
     position: sticky;
     bottom: 20px;
@@ -856,7 +886,9 @@ body {
     font-weight: 600;
 }
 
+
 /* Price Arrow and Color Styles */
+
 .current-price-container {
     display: flex;
     align-items: center;
@@ -899,7 +931,9 @@ body {
     color: var(--color-text-secondary);
 }
 
+
 /* Animation for price changes */
+
 @keyframes pricePulse {
     0% {
         transform: scale(1);
@@ -916,7 +950,9 @@ body {
     animation: pricePulse 0.5s ease-in-out;
 }
 
+
 /* Search result layout */
+
 .search-group {
     margin-bottom: 8px;
 }
@@ -946,13 +982,17 @@ body {
     color: var(--color-text-secondary);
 }
 
+
 /* flash highlight for jumped panels */
+
 .search-flash {
     box-shadow: 0 0 0 3px rgba(var(--color-success-rgb, 33, 128, 141), 0.18);
     transition: box-shadow 0.2s ease;
 }
 
+
 /* --- Stats Grid --- */
+
 .stats-grid {
     display: grid;
     grid-template-columns: 60% 40%;
@@ -960,7 +1000,9 @@ body {
     margin-top: 20px;
 }
 
+
 /* Card Reuse */
+
 .stats-card {
     background: var(--color-surface);
     padding: 16px;
@@ -968,7 +1010,9 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
+
 /* Risk Items */
+
 .risk-item {
     margin-bottom: 15px;
 }
@@ -979,7 +1023,9 @@ body {
     margin-bottom: 5px;
 }
 
+
 /* Risk Bar Container */
+
 .risk-bar {
     width: 100%;
     height: 10px;
@@ -988,7 +1034,9 @@ body {
     overflow: hidden;
 }
 
+
 /* Animated Bar */
+
 .risk-bar div {
     height: 100%;
     width: 0%;
@@ -997,14 +1045,18 @@ body {
     border-radius: 50px;
 }
 
+
 /* --- Mobile Responsive (Stacked) --- */
+
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: 1fr;
     }
 }
 
+
 /* Currency toggle animation */
+
 .fab-icon {
     transition: transform var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
 }
@@ -1013,7 +1065,9 @@ body {
     display: none !important;
 }
 
+
 /* Class added only while switching currency */
+
 .currency-toggle-pop .fab-icon {
     transform: scale(0.85) rotate(180deg);
     opacity: 0.4;
@@ -1048,9 +1102,12 @@ body {
     }
 }
 
+
 /* Add to the end of style.css */
 
+
 /* Export Dropdown */
+
 .export-dropdown {
     position: absolute;
     bottom: 70px;
@@ -1103,7 +1160,9 @@ body {
     color: var(--color-error);
 }
 
+
 /* Adjust FAB container for new import button */
+
 .fab-container {
     position: fixed;
     bottom: 80px;
@@ -1114,7 +1173,9 @@ body {
     z-index: 1000;
 }
 
+
 /* Restore Mode Indicator */
+
 #restoreModeIndicator {
     margin-top: var(--space-16);
     animation: fadeIn 0.5s ease;
@@ -1129,414 +1190,17 @@ body {
     }
 }
 
-/* ===================================================== */
-/* AI SUMMARY FEATURE STYLES - NEW                      */
-/* ===================================================== */
 
-/* AI Summary Panel */
-.ai-summary-panel {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 600px;
-    max-height: 80vh;
-    background: var(--color-surface);
-    border: 2px solid var(--color-primary);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    z-index: 3000;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    resize: both;
-    min-width: 300px;
-    min-height: 200px;
-}
+/* Mobile adjustments */
 
-.ai-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-12) var(--space-16);
-    background: var(--color-primary);
-    color: var(--color-btn-primary-text);
-    cursor: move;
-    user-select: none;
-}
-
-.ai-drag-handle {
-    font-weight: 600;
-    font-size: var(--font-size-lg);
-}
-
-.ai-panel-controls {
-    display: flex;
-    gap: var(--space-8);
-}
-
-.ai-control-btn {
-    background: none;
-    border: none;
-    color: var(--color-btn-primary-text);
-    font-size: var(--font-size-lg);
-    cursor: pointer;
-    padding: var(--space-4);
-    border-radius: var(--radius-base);
-    transition: background-color var(--duration-fast) var(--ease-standard);
-}
-
-.ai-control-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.ai-control-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.ai-control-btn:disabled:hover {
-    background: none;
-}
-
-.ai-panel-content {
-    padding: var(--space-16);
-    overflow-y: auto;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.ai-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-32);
-    gap: var(--space-16);
-    flex: 1;
-}
-
-.ai-loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--color-secondary);
-    border-top-color: var(--color-primary);
-    border-radius: 50%;
-    animation: ai-spin 1s linear infinite;
-}
-
-@keyframes ai-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.ai-loading-text {
-    color: var(--color-text-secondary);
-    font-size: var(--font-size-base);
-}
-
-.ai-summary-text {
-    font-size: var(--font-size-base);
-    line-height: 1.6;
-    color: var(--color-text);
-    white-space: pre-wrap;
-    margin-bottom: var(--space-16);
-    flex: 1;
-}
-
-.ai-metadata {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-secondary);
-    padding: var(--space-12);
-    background: var(--color-secondary);
-    border-radius: var(--radius-base);
-    margin-top: var(--space-16);
-    border-left: 3px solid var(--color-primary);
-}
-
-.ai-controls-bottom {
-    display: flex;
-    gap: var(--space-8);
-    flex-wrap: wrap;
-    margin-top: var(--space-16);
-    padding-top: var(--space-16);
-    border-top: 1px solid var(--color-card-border-inner);
-}
-
-.ai-action-btn {
-    padding: var(--space-8) var(--space-12);
-    background: var(--color-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-base);
-    color: var(--color-text);
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-standard);
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-}
-
-.ai-action-btn:hover {
-    background: var(--color-secondary-hover);
-    transform: translateY(-1px);
-}
-
-.ai-action-btn:active {
-    transform: translateY(0);
-}
-
-/* AI FAB cooldown indicator */
-.fab.cooldown {
-    position: relative;
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.fab.cooldown::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 50%;
-}
-
-.fab.cooldown .fab-icon {
-    filter: grayscale(1);
-}
-
-/* Pin indicator */
-.ai-summary-panel.pinned {
-    border-color: var(--color-warning);
-}
-
-.ai-summary-panel.pinned .ai-drag-handle::after {
-    content: ' 📌';
-}
-
-/* AI FAB specific styling */
-#aiSummaryBtn .fab-icon {
-    font-size: 22px;
-}
-
-/* AI Panel responsive adjustments */
-@media (max-width: 768px) {
-    .ai-summary-panel {
-        width: 95%;
-        max-height: 70vh;
-        max-width: 95%;
-        min-width: unset;
-        min-height: unset;
-    }
-    
-    .ai-panel-controls {
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-    
-    .ai-controls-bottom {
-        flex-direction: column;
-    }
-    
-    .ai-action-btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .ai-summary-text {
-        font-size: var(--font-size-sm);
-    }
-}
-
-/* AI Panel resize handle */
-.ai-summary-panel::-webkit-resizer {
-    background-color: var(--color-border);
-    border-radius: var(--radius-sm);
-}
-
-.ai-summary-panel {
-    resize: both;
-    overflow: hidden;
-}
-
-/* AI Panel animation */
-@keyframes aiPanelAppear {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
-
-.ai-summary-panel[style*="display: flex"] {
-    animation: aiPanelAppear 0.3s var(--ease-standard);
-}
-
-/* Mobile adjustments for AI FAB */
 @media (max-width: 768px) {
     .fab-container {
         right: var(--space-16);
         bottom: 70px;
     }
-    
     .export-dropdown {
         bottom: 60px;
         right: -10px;
         min-width: 160px;
     }
-    
-    #aiSummaryBtn .fab-icon {
-        font-size: 20px;
-    }
-}
-
-/* AI Panel scrollbar styling */
-.ai-panel-content::-webkit-scrollbar {
-    width: 8px;
-}
-
-.ai-panel-content::-webkit-scrollbar-track {
-    background: var(--color-secondary);
-    border-radius: var(--radius-full);
-}
-
-.ai-panel-content::-webkit-scrollbar-thumb {
-    background: var(--color-primary);
-    border-radius: var(--radius-full);
-}
-
-.ai-panel-content::-webkit-scrollbar-thumb:hover {
-    background: var(--color-primary-hover);
-}
-
-/* AI Panel loading text animation */
-.ai-loading-text {
-    animation: aiLoadingPulse 1.5s infinite;
-}
-
-@keyframes aiLoadingPulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.6;
-    }
-}
-
-/* AI Panel close button hover effect */
-.ai-control-btn[data-action="close"]:hover {
-    background: rgba(255, 50, 50, 0.2);
-}
-
-/* AI Panel regenerate button */
-.ai-control-btn[data-action="regenerate"]:hover {
-    background: rgba(50, 255, 50, 0.2);
-}
-
-/* AI Panel new button */
-.ai-control-btn[data-action="new"]:hover {
-    background: rgba(50, 150, 255, 0.2);
-}
-
-/* AI Panel pin button */
-.ai-control-btn[data-action="pin"]:hover {
-    background: rgba(255, 200, 50, 0.2);
-}
-
-/* AI Panel copy button */
-.ai-control-btn[data-action="copy"]:hover {
-    background: rgba(150, 150, 255, 0.2);
-}
-
-/* Restore mode specific styling for AI panel */
-.ai-summary-panel.restore-mode {
-    border-color: var(--color-warning);
-}
-
-.ai-summary-panel.restore-mode .ai-panel-header {
-    background: var(--color-warning);
-}
-
-/* Cooldown countdown animation */
-@keyframes cooldownPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(var(--color-primary-rgb, 33, 128, 141), 0.4);
-    }
-    50% {
-        box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb, 33, 128, 141), 0);
-    }
-}
-
-.fab.cooldown {
-    animation: cooldownPulse 2s infinite;
-}
-
-/* AI Panel minimum sizes for better usability */
-@media (min-width: 769px) {
-    .ai-summary-panel {
-        min-width: 400px;
-        min-height: 300px;
-    }
-}
-
-/* Ensure AI panel doesn't overlap with other fixed elements */
-@media (max-height: 600px) {
-    .ai-summary-panel {
-        max-height: 90vh;
-        top: 45%;
-    }
-}
-
-/* AI Panel text selection styling */
-.ai-summary-text::selection {
-    background: rgba(var(--color-primary-rgb, 33, 128, 141), 0.3);
-    color: var(--color-text);
-}
-
-/* AI Panel metadata emphasis */
-.ai-metadata strong {
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-/* AI Panel success state for copy/share */
-.ai-action-btn.success {
-    background: var(--color-success);
-    color: var(--color-btn-primary-text);
-}
-
-/* AI Panel error state */
-.ai-action-btn.error {
-    background: var(--color-error);
-    color: var(--color-btn-primary-text);
-}
-
-/* AI Panel warning state for restore mode */
-.ai-action-btn.warning {
-    background: var(--color-warning);
-    color: var(--color-slate-900);
-}
-
-/* Smooth transition for panel appearance */
-.ai-summary-panel {
-    transition: opacity var(--duration-normal) var(--ease-standard),
-                transform var(--duration-normal) var(--ease-standard);
-}
-
-/* Ensure AI panel is above all other elements except maybe modals */
-.ai-summary-panel {
-    z-index: 3000;
-}
-
-/* Export dropdown should be above AI panel when both are active */
-.export-dropdown.active {
-    z-index: 3001;
 }
