@@ -7,6 +7,7 @@
     <title>Crypto View</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 </head>
 
 <body>
@@ -25,11 +26,19 @@
                 </div>
             </div>
         </div>
+        <div id="restoreModeIndicator" style="display: none;" class="panel">
+            <div class="anomaly-item status--warning">
+
+                <span class="anomaly-text" id="restoreModeText">RESTORED FROM SNAPSHOT — LIVE DATA DISABLED</span>
+                <button id="exitRestoreModeBtn" style="margin-left: auto; padding: 4px 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-base); cursor: pointer; font-size: var(--font-size-sm);">Exit Restore Mode</button>
+            </div>
+        </div>
     </header>
     <div class="footer-wrap"></div>
 
     <!-- Main Container -->
     <main class="main-container">
+
         <!-- Crypto Selector -->
         <section class="crypto-selector">
             <button class="crypto-btn active" data-symbol="BTC" data-name="Bitcoin" data-icon="₿">
@@ -109,7 +118,7 @@
 
         <!-- Market Microstructure Panel -->
         <section class="panel">
-            <h3 class="panel-title">📊 Market Microstructure</h3>
+            <h3 class="panel-title">Market Microstructure</h3>
             <div class="microstructure-grid">
                 <div class="metric-card">
                     <div class="metric-label">Order Flow Imbalance</div>
@@ -137,7 +146,7 @@
 
         <!-- Volatility Metrics -->
         <section class="panel">
-            <h3 class="panel-title">📈 Volatility Metrics</h3>
+            <h3 class="panel-title">Volatility Metrics</h3>
             <div class="volatility-grid">
                 <div class="volatility-item">
                     <div class="volatility-header">
@@ -171,7 +180,7 @@
 
         <!-- Anomaly Detection -->
         <section class="panel">
-            <h3 class="panel-title">🔍 Anomaly Detection</h3>
+            <h3 class="panel-title">Anomaly Detection</h3>
             <div class="anomaly-container" id="anomalyContainer">
                 <div class="anomaly-item status--info">
                     <span class="anomaly-icon">ℹ️</span>
@@ -220,7 +229,7 @@
 
         <!-- Alert Center -->
         <section class="panel">
-            <h3 class="panel-title">🔔 Alert Center</h3>
+            <h3 class="panel-title">Alert Center</h3>
             <div class="alerts-container" id="alertsContainer">
                 <div class="alert-item status--info">
                     <span class="alert-time">--:--</span>
@@ -229,153 +238,329 @@
             </div>
         </section>
 
-        <!-- Restore Mode Indicator -->
-        <div id="restoreModeIndicator" style="display: none;" class="panel">
-            <div class="anomaly-item status--warning">
-                <span class="anomaly-icon">📂</span>
-                <span class="anomaly-text" id="restoreModeText">RESTORED FROM SNAPSHOT — LIVE DATA DISABLED</span>
-                <button id="exitRestoreModeBtn" style="margin-left: auto; padding: 4px 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-base); cursor: pointer; font-size: var(--font-size-sm);">Exit Restore Mode</button>
-            </div>
-        </div>
-    </main>
 
-    <!-- Floating Action Buttons -->
-    <div class="fab-container">
-        <button class="fab" id="themeToggle" title="Toggle Theme">
-            <span class="fab-icon">🌙</span>
-        </button>
-        <button class="fab" id="exportBtn" title="Export Data">
-            <span class="fab-icon">📥</span>
-        </button>
-        <div class="export-dropdown" id="exportDropdown">
-            <div class="export-option" data-option="pdf">Export as PDF</div>
-            <div class="export-option" data-option="json">Export as JSON</div>
-            <div class="export-option" data-option="both">Export as BOTH</div>
-            <div class="export-option" data-option="cancel">Cancel</div>
-        </div>
-        <button class="fab" id="searchBtn" title="Search">
-            <span class="fab-icon">🔍</span>
-        </button>
-        <button class="fab" id="aiSummaryBtn" title="AI Summary">
-            <span class="fab-icon">🧠</span>
-        </button>
-        <button class="fab" id="currencyToggle" title="Toggle Currency">
-            <span class="fab-icon">USDT</span>
-        </button>
-        <button class="fab" id="importBtn" title="Import Snapshot">
-            <span class="fab-icon">📂</span>
-        </button>
-    </div>
 
-    <!-- Hidden file input for import -->
-    <input type="file" id="importFileInput" accept=".json" style="display: none;">
+        <!-- Floating Action Button Stack -->
+        <div class="fab-stack">
 
-    <!-- Search Panel -->
-    <div class="search-panel" id="searchPanel">
-        <div class="search-panel-header">
-            <h3>Crypto Search</h3>
-            <button class="close-btn" id="closeSearch">✕</button>
-        </div>
-        <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
-        <div class="search-results" id="searchResults">
-            <div class="search-result-item">Start typing to search...</div>
-        </div>
-    </div>
 
-    <!-- Enhanced AI Summary Panel -->
-    <div id="aiSummaryPanel" class="ai-summary-panel" style="display:none;">
-        <div class="ai-summary-header" id="aiSummaryDragHandle">
-            <div class="ai-summary-title">🧠 AI Market Analysis</div>
-            <div class="ai-summary-controls">
-                <button class="ai-summary-btn" id="aiRegenerateBtn" title="Regenerate">↻</button>
-                <button class="ai-summary-btn" id="aiCopyBtn" title="Copy">📋</button>
-                <button class="ai-summary-btn" id="aiDownloadBtn" title="Download">↓</button>
-                <button class="ai-summary-btn" id="aiShareBtn" title="Share">↗</button>
-                <button class="ai-summary-btn" id="aiCloseBtn" title="Close">✕</button>
-            </div>
-        </div>
-        <div class="ai-summary-content" id="aiSummaryContent">
-            <div class="ai-summary-text" id="aiSummaryText">Generating market analysis...</div>
-        </div>
-        <div class="ai-summary-footer">
-            <div class="ai-summary-metadata" id="aiSummaryMetadata">
-                Analysis based on current snapshot • Generated just now
-            </div>
-        </div>
-        <div class="ai-summary-resize-handle" id="aiSummaryResizeHandle"></div>
-    </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-item">
-                <span class="footer-label">Connection</span>
-                <span class="footer-value" id="footerConnection">Active</span>
-            </div>
-            <div class="footer-item">
-                <span class="footer-label">Latency</span>
-                <span class="footer-value" id="latency">--ms</span>
-            </div>
-            <div class="footer-item">
-                <span class="footer-label">Data Points</span>
-                <span class="footer-value" id="dataPoints">0</span>
-            </div>
-            <div class="footer-item" id="footerLivePriceBox" style="display:none;">
-                <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
-            </div>
-        </div>
-    </footer>
+            <!-- Search -->
+            <button class="fab child" id="searchBtn" aria-label="Search">
+        <span class="fab-icon">⌕</span>
+        <span class="fab-tooltip">Search assets, metrics, and analytics</span>
+    </button>
+            <!-- Theme Toggle -->
+            <button class="fab child" id="themeToggle" aria-label="Theme Toggle">
+        <span class="fab-icon">◐</span>
+        <span class="fab-tooltip">Switch between light and dark mode</span>
+    </button>
 
-    <!-- Copyright Footer -->
-    <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
-        <!-- Top Grid Section -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
-            <!-- Domains & Technologies -->
-            <div>
-                <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                    Domains & Technologies
-                </h4>
-                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">⚡ FinTech & Crypto Markets</span>
-                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">📈 Data Analytics & Visualization</span>
-                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">🔌 Real-Time WebSocket Streaming</span>
-                    <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">🌐 REST APIs (CoinGecko)</span>
+
+
+
+            <!-- Import Snapshot -->
+            <button class="fab child" id="importBtn" aria-label="Import Snapshot">
+   <span class="fab-icon">
+    <img src="monitoring.png" alt="AI Summary">
+  </span>
+        <span class="fab-tooltip">Import and restore a saved market snapshot</span>
+    </button>
+            <!-- Export Data -->
+            <button class="fab child" id="exportBtn" aria-label="Export Snapshot">
+        <span class="fab-icon">⭳</span>
+        <span class="fab-tooltip">Export current market snapshot (PDF / JSON)</span>
+    </button>
+            <div class="export-dropdown" id="exportDropdown">
+                <div class="export-option" data-option="pdf">Export as PDF</div>
+                <div class="export-option" data-option="json">Export as JSON</div>
+                <div class="export-option" data-option="both">Export as BOTH</div>
+                <div class="export-option" data-option="cancel">Cancel</div>
+            </div>
+            <button class="fab child" id="aiSummaryBtn" aria-label="AI Summary">
+  <span class="fab-icon">
+    <img src="artificial-intelligence.png" alt="AI Summary">
+  </span>
+  <span class="fab-tooltip">Generate AI-powered market summary</span>
+</button>
+
+            <!-- Currency Toggle -->
+            <button class="fab child" id="currencyToggle" aria-label="Currency Toggle">
+        <span class="fab-icon">₹ / $</span>
+        <span class="fab-tooltip">Toggle price display between INR and USDT</span>
+    </button>
+
+            <button class="fab main" aria-label="Actions">
+  <span class="fab-icon">
+    <img src="outdent.png" alt="Actions">
+  </span>
+</button>
+
+
+
+        </div>
+
+
+        <div id="aiSummaryPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;">
+
+            <div id="aiSummaryWindow" style="
+        width:520px;
+        max-width:90vw;
+        min-width:320px;
+        min-height:220px;
+        background:var(--color-surface);
+        border-radius:14px;
+        box-shadow:var(--shadow-lg);
+        position:absolute;
+        top:15%;
+        left:50%;
+        transform:translateX(-50%);
+        resize:both;
+        overflow:auto;
+       ">
+
+                <!-- HEADER (DRAG HANDLE) -->
+                <div id="aiSummaryHeader" style="
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          padding:12px 16px;
+          border-bottom:1px solid var(--color-border);
+          cursor:move;
+         ">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="fab-icon2">
+    <img src="artificial-intelligence.png" alt="AI Summary">
+  </span>
+                        <strong>AI Market Summary</strong>
+                    </div>
+                    <button onclick="closeAISummary()" style="background:none;border:none;font-size:16px;cursor:pointer;">
+        ✕
+      </button>
+                </div>
+
+                <!-- CONTENT -->
+                <div style="padding:16px;">
+                    <p id="aiSummaryText" style="
+          line-height:1.6;
+          font-size:14px;
+          color:var(--color-text);
+          margin-bottom:12px;
+         ">
+                        Generating AI summary…
+                    </p>
+
+                    <!-- STATUS -->
+                    <div id="aiSummaryStatus" style="
+            font-size:12px;
+            color:var(--color-text-secondary);
+            margin-bottom:12px;
+           ">
+                        Source: Snapshot-Based AI Analysis
+                    </div>
+
+                    <!-- ACTION BAR -->
+                    <div style="
+            display:flex;
+            flex-wrap:wrap;
+            gap:8px;
+            justify-content:flex-end;
+           ">
+
+                        <button onclick="copyAISummary()" class="ai-btn">⧉ Copy</button>
+                        <button onclick="shareAISummary()" class="ai-btn">⇪ Share</button>
+                        <button onclick="downloadAISummary()" class="ai-btn">⇩ Download</button>
+
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- APIs -->
-            <div>
-                <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                    APIs
-                </h4>
-                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                    <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
-                    <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
-                </div>
+
+
+        <!-- Hidden file input for import -->
+        <input type="file" id="importFileInput" accept=".json" style="display: none;">
+
+        <!-- Search Panel -->
+        <div class="search-panel" id="searchPanel">
+            <div class="search-panel-header">
+                <h3>Crypto Search</h3>
+                <button class="close-btn" id="closeSearch">✕</button>
             </div>
-
-            <!-- Status -->
-            <div>
-                <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                    Status
-                </h4>
-                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                    <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
-                    <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Last updated: <span id="footerLastUpdate">Now</span></div>
-                    <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
-                    <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
-                </div>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
+            <div class="search-results" id="searchResults">
+                <div class="search-result-item">Start typing to search...</div>
             </div>
         </div>
 
-        <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
-            <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-item">
+                    <span class="footer-label">Connection</span>
+                    <span class="footer-value" id="footerConnection">Active</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Latency</span>
+                    <span class="footer-value" id="latency">--ms</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Data Points</span>
+                    <span class="footer-value" id="dataPoints">0</span>
+                </div>
+                <div class="footer-item" id="footerLivePriceBox" style="display:none;">
+                    <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Copyright Footer -->
+        <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
+            <!-- Top Grid Section -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
+                <!-- Domains & Technologies -->
+                <div>
+                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                        Domains & Technologies
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">FinTech & Crypto Markets</span>
+                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Data Analytics & Visualization</span>
+                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Real-Time WebSocket Streaming</span>
+                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Flat icon | JsPdf | JSRE</span>
+                    </div>
+                </div>
+                <!-- Status -->
+                <div>
+                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                        Status
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        <div style="font-size: var(--font-size-sm);">
+                            Proxy:
+                            <a href="https://crypto-ai-proxy.ajithramesh2020.workers.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-success); font-weight: var(--font-weight-bold); text-decoration: none;">
+                                <span id="footerStatus">Cloudflare</span>
+                            </a>
+                        </div>
+
+                        <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
+
+                    </div>
+                </div>
+                <!-- APIs -->
+                <div>
+                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                        APIs
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
+                        <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
+                        <a href="https://www.exchangerate-api.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Exchange Rate</a>
+                        <a href="https://www.huggingfaceapi.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">HuggingFace</a>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
+                <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
                 © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
             </a>
-        </div>
-    </footer>
+            </div>
+        </footer>
 
-    <script src="app.js"></script>
+        <!-- JSON Decision Modal (required for JSRE) -->
+        <div id="jsonDecisionModal" class="json-modal" style="display: none;">
+            <div class="json-modal-backdrop"></div>
+            <div class="json-modal-window">
+                <h2 id="jsonModalTitle"></h2>
+                <p id="jsonModalDesc"></p>
+                <div id="jsonModalTimer" class="json-modal-timer"></div>
+                <div class="json-modal-actions">
+                    <button id="jsonPrimaryBtn" class="primary-btn"></button>
+                    <button id="jsonSecondaryBtn" class="secondary-btn"></button>
+                </div>
+            </div>
+        </div>
+
+        <script src="app.js"></script>
 </body>
+<script>
+    document.getElementById("aiSummaryBtn").onclick = () => {
+        openAISummary("Generating AI summary…");
+    };
+
+    function copyAISummary() {
+        const text = document.getElementById("aiSummaryText").innerText;
+        navigator.clipboard.writeText(text);
+        addAlert("AI summary copied", "success");
+    }
+
+    function shareAISummary() {
+        const text = document.getElementById("aiSummaryText").innerText;
+
+        if (navigator.share) {
+            navigator.share({
+                title: "Crypto View – AI Summary",
+                text: text
+            });
+        } else {
+            addAlert("Share not supported on this browser", "warning");
+        }
+    }
+
+    function downloadAISummary() {
+        const text = document.getElementById("aiSummaryText").innerText;
+        const blob = new Blob([text], {
+            type: "text/plain"
+        });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `crypto-view-ai-summary-${Date.now()}.txt`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    function regenerateAISummary() {
+        document.getElementById("aiSummaryText").innerText = "Regenerating summary…";
+        generateAISummary();
+    }
+    (function makeAISummaryDraggable() {
+        const panel = document.getElementById("aiSummaryWindow");
+        const header = document.getElementById("aiSummaryHeader");
+
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        header.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            offsetX = e.clientX - panel.offsetLeft;
+            offsetY = e.clientY - panel.offsetTop;
+            document.body.style.userSelect = "none";
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+            panel.style.margin = "0";
+            panel.style.left = `${e.clientX - offsetX}px`;
+            panel.style.top = `${e.clientY - offsetY}px`;
+            panel.style.position = "absolute";
+        });
+
+        document.addEventListener("mouseup", () => {
+            isDragging = false;
+            document.body.style.userSelect = "";
+        });
+    })();
+    resize: both;
+    overflow: auto;
+</script>
 
 </html>
