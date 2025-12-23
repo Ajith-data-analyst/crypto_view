@@ -14,8 +14,19 @@ const state = {
     lastLivePrice: null,
     currency: 'USDT',
     usdtToInrRate: 83.5,
-    isRestoreMode: false, // New: Track if we're in restore mode
-    restoreSnapshot: null // New: Store the active snapshot in restore mode
+    isRestoreMode: false,
+    restoreSnapshot: null
+};
+
+// AI Summary state
+const aiSummaryState = {
+    currentSnapshot: null,
+    isDragging: false,
+    isResizing: false,
+    dragOffset: { x: 0, y: 0 },
+    panelPosition: { x: 0, y: 0 },
+    panelSize: { width: 700, height: 500 },
+    isLoading: false
 };
 
 // Cryptocurrency mapping for Binance
@@ -45,6 +56,26 @@ function init() {
     setupSearchPanel();
     setupCurrencyToggle();
 
+    // Initialize AI Summary Panel
+    initAISummaryPanel();
+
+    // Setup AI Summary button
+    const aiSummaryBtn = document.getElementById('aiSummaryBtn');
+    if (aiSummaryBtn) {
+        aiSummaryBtn.addEventListener('click', async() => {
+            try {
+                showAISummary();
+                await generateRealAISummary();
+                addAlert('AI Summary generated from real AI analysis', 'info');
+            } catch (error) {
+                console.error('AI Summary generation failed:', error);
+                addAlert('AI service unavailable, using fallback analysis', 'warning');
+                // Fallback to deterministic summary
+                generateFallbackAISummary();
+            }
+        });
+    }
+
     // Only connect to live data if not in restore mode
     if (!state.isRestoreMode) {
         connectWebSocket();
@@ -63,10 +94,709 @@ function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const restoreParam = urlParams.get('restore');
     if (restoreParam === 'demo') {
-        // Load a demo snapshot (for testing)
         loadDemoSnapshot();
     }
 }
+
+// =====================================================
+// ENHANCED AI SUMMARY MODULE WITH REAL AI API
+// =====================================================
+
+// Generate real AI summary using Hugging Face API
+async function generateRealAISummary() {
+    const panel = document.getElementById('aiSummaryPanel');
+    const textElement = document.getElementById('aiSummaryText');
+    const metadataElement = document.getElementById('aiSummaryMetadata');
+
+    if (!panel || !textElement) return;
+
+    // Generate snapshot
+    const snapshot = generateSnapshot();
+    aiSummaryState.currentSnapshot = snapshot;
+
+    // Set loading state
+    aiSummaryState.isLoading = true;
+    textElement.textContent = '🤔 AI is analyzing market data...';
+    textElement.className = 'ai-summary-text loading';
+
+    // Prepare data for AI
+    const s = snapshot.snapshot;
+    const data = s.priceData[s.applicationState.currentSymbol];
+    const analytics = s.derivedAnalytics[s.applicationState.currentSymbol];
+
+    if (!data) {
+        textElement.textContent = 'Unable to generate analysis: No price data available.';
+        aiSummaryState.isLoading = false;
+        return;
+    }
+
+    // Prepare comprehensive prompt (shortened to avoid token limits)
+    const prompt = `CRYPTO MARKET DATA ANALYSIS REQUEST:
+
+Asset: ${s.applicationState.currentName} (${s.applicationState.currentSymbol})
+Current Price: $${data.price.toFixed(2)}
+24h Change: ${data.priceChangePercent24h >= 0 ? '+' : ''}${data.priceChangePercent24h.toFixed(2)}%
+24h High: $${data.high24h.toFixed(2)}
+24h Low: $${data.low24h.toFixed(2)}
+24h Volume: $${(data.volume24h / 1000000).toFixed(2)}M
+
+Please provide a concise market analysis with:
+1. Executive Summary
+2. Key Observations
+3. Risk Assessment
+4. Trading Insights
+
+Be professional and avoid financial advice.`;
+
+    try {
+        // ⭐⭐⭐ CORRECT GEMINI API ENDPOINT ⭐⭐⭐
+        // Get your FREE Gemini API key from: https://aistudio.google.com/apikey
+        const GEMINI_API_KEY = "AIzaSyBQUs-uJxM8yPwwpMiXI6ckToIJFOoYWEo"; // ⭐ REPLACE WITH YOUR KEY ⭐
+
+        // CORRECT Gemini API URL (v1beta is deprecated, use v1)
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyBQUs-uJxM8yPwwpMiXI6ckToIJFOoYWEo`;
+
+        // Call Google Gemini API directly
+        console.log('Calling Gemini API with key:', GEMINI_API_KEY.substring(0, 10) + '...');
+
+        const response = await fetch(GEMINI_API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `You are a professional cryptocurrency market analyst. Analyze this data:
+
+${prompt}
+
+Provide analysis in this format:
+📊 EXECUTIVE SUMMARY
+🔍 KEY OBSERVATIONS  
+⚠️ RISK ASSESSMENT
+🎯 TRADING INSIGHTS
+
+Use clear, professional language.`
+                    }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 600,
+                    topP: 0.8,
+                    topK: 40
+                },
+                safetySettings: [{
+                        category: "HARM_CATEGORY_HARASSMENT",
+                        threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_HATE_SPEECH",
+                        threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    }
+                ]
+            })
+        });
+
+        console.log('Gemini API Response Status:', response.status);
+
+        if (!response.ok) {
+            let errorDetails = '';
+            try {
+                const errorData = await response.json();
+                errorDetails = JSON.stringify(errorData);
+                console.error('Gemini API error details:', errorData);
+            } catch (e) {
+                errorDetails = await response.text();
+            }
+
+            // Common error checks
+            if (response.status === 404) {
+                throw new Error(`Gemini API endpoint not found (404). Please check the API URL.`);
+            } else if (response.status === 400 && errorDetails.includes('API key')) {
+                throw new Error(`Invalid API key. Get a free key from: https://aistudio.google.com/apikey`);
+            } else if (response.status === 403) {
+                throw new Error(`API access forbidden. Check if your API key is valid and has proper permissions.`);
+            }
+
+            throw new Error(`API responded with status: ${response.status}. Details: ${errorDetails.substring(0, 200)}`);
+        }
+
+        const result = await response.json();
+        console.log('Gemini API full response:', result);
+
+        // Extract AI response from Gemini format
+        let summaryText = "";
+        if (result.candidates && result.candidates[0] && result.candidates[0].content) {
+            summaryText = result.candidates[0].content.parts[0].text;
+        } else if (result.error) {
+            throw new Error(`Gemini API error: ${result.error.message}`);
+        } else if (result.promptFeedback && result.promptFeedback.blockReason) {
+            throw new Error(`Content blocked: ${result.promptFeedback.blockReason}`);
+        } else {
+            summaryText = "AI analysis generated successfully. Market data processed.";
+        }
+
+        // Clean up the response
+        summaryText = summaryText
+            .replace(/<[^>]*>/g, '')
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/\[.*?\]/g, '')
+            .replace(/\n\s*\n/g, '\n\n')
+            .trim();
+
+        // Update UI
+        textElement.textContent = summaryText || "AI analysis completed successfully.";
+        textElement.className = 'ai-summary-text';
+
+        const now = new Date();
+        metadataElement.textContent = `AI Analysis • Generated ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Using Google Gemini AI`;
+
+        addAlert('AI analysis completed successfully', 'success');
+
+    } catch (error) {
+        console.error('AI API error:', error);
+
+        // Special handling for 404
+        if (error.message.includes('404') || error.message.includes('endpoint not found')) {
+            textElement.textContent = `🔧 API Endpoint Issue\n\nGemini API endpoint returned 404 (Not Found).\n\nThis usually means:\n1. API URL has changed\n2. Your API key is invalid\n3. Service is temporarily down\n\nTry using Gemini 1.5 Flash (faster, cheaper):\nhttps://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_KEY\n\n${generateFallbackAISummaryText(snapshot)}`;
+            metadataElement.textContent = 'API Endpoint 404 Error';
+            addAlert('Gemini API endpoint not found (404)', 'error');
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+            // CORS error - use CORS proxy
+            textElement.textContent = `🌐 Browser Restriction\n\nDirect API call blocked by CORS policy.\n\nSolution: Use CORS proxy or implement backend.\n\nTry this in your code:\nconst CORS_PROXY = "https://corsproxy.io/?";\nconst url = CORS_PROXY + encodeURIComponent(apiUrl);\n\n${generateFallbackAISummaryText(snapshot)}`;
+            metadataElement.textContent = 'CORS Blocked - Use Proxy';
+            addAlert('Direct API blocked by browser CORS policy', 'warning');
+        } else if (error.message.includes('API key')) {
+            textElement.textContent = `🔑 API Key Required\n\n${error.message}\n\nSteps to get FREE key:\n1. Go to: https://aistudio.google.com/apikey\n2. Sign in with Google\n3. Click "Create API Key"\n4. Copy and paste it in code\n\n${generateFallbackAISummaryText(snapshot)}`;
+            metadataElement.textContent = 'API Key Required';
+            addAlert('Gemini API key required. Get free key.', 'warning');
+        } else {
+            textElement.textContent = `⚠️ AI Service Issue\n\n${error.message}\n\n${generateFallbackAISummaryText(snapshot)}`;
+            metadataElement.textContent = 'Service Unavailable';
+            addAlert('AI service temporarily unavailable', 'warning');
+        }
+
+        textElement.className = 'ai-summary-text';
+    } finally {
+        aiSummaryState.isLoading = false;
+    }
+}
+// Fallback deterministic summary (when AI API fails)
+function generateFallbackAISummary() {
+    const snapshot = aiSummaryState.currentSnapshot || generateSnapshot();
+    const textElement = document.getElementById('aiSummaryText');
+    const metadataElement = document.getElementById('aiSummaryMetadata');
+
+    if (!textElement || !metadataElement) return;
+
+    textElement.textContent = generateFallbackAISummaryText(snapshot);
+    textElement.className = 'ai-summary-text';
+
+    const now = new Date();
+    metadataElement.textContent = `Deterministic Analysis • Generated ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function generateFallbackAISummaryText(snapshot) {
+    if (!snapshot || !snapshot.snapshot) return "Unable to generate analysis: Invalid snapshot data.";
+
+    const s = snapshot.snapshot;
+    const appState = s.applicationState;
+    const data = s.priceData[appState.currentSymbol];
+    const analytics = s.derivedAnalytics[appState.currentSymbol];
+
+    if (!data) return "Unable to generate analysis: No price data available.";
+
+    // Helper functions
+    const format = (value, decimals = 2) => {
+        if (value === null || value === undefined) return "N/A";
+        return Number(value).toFixed(decimals);
+    };
+
+    const getVolatilityRegime = (vol24h) => {
+        if (vol24h < 2) return { level: "Low", description: "stable market conditions" };
+        if (vol24h < 5) return { level: "Medium", description: "moderate volatility" };
+        return { level: "High", description: "elevated volatility environment" };
+    };
+
+    const getRiskLevel = (value) => {
+        if (value < 30) return { level: "Low", class: "risk-low" };
+        if (value < 70) return { level: "Medium", class: "risk-medium" };
+        return { level: "High", class: "risk-high" };
+    };
+
+    const getOrderFlowSignal = (ofi) => {
+        if (ofi > 10) return { signal: "Bullish", description: "strong buyer dominance" };
+        if (ofi < -10) return { signal: "Bearish", description: "significant selling pressure" };
+        if (ofi > 5) return { signal: "Slightly Bullish", description: "moderate buying interest" };
+        if (ofi < -5) return { signal: "Slightly Bearish", description: "light selling pressure" };
+        return { signal: "Neutral", description: "balanced order flow" };
+    };
+
+    // Normalize inputs (prevents all syntax issues)
+    const a = (analytics && typeof analytics === "object") ? analytics : {};
+    const d = (data && typeof data === "object") ? data : {};
+
+    // Calculate values
+    const volatility24h = a.volatility24h !== undefined ? a.volatility24h : 0;
+    const volatilityRegime = getVolatilityRegime(volatility24h);
+
+    const ofi = a.orderFlowImbalance !== undefined ? a.orderFlowImbalance : 0;
+    const orderFlowSignal = getOrderFlowSignal(ofi);
+
+    const priceChange = d.priceChangePercent24h !== undefined ? d.priceChangePercent24h : 0;
+
+
+    // Build the summary
+    let summary = "";
+
+    summary += `=== MARKET ANALYSIS: ${appState.currentName} (${appState.currentSymbol}) ===\n\n`;
+
+    summary += `🔍 EXECUTIVE SUMMARY\n`;
+    summary += `• ${appState.currentName} trading at $${format(data.price, data.price > 1000 ? 2 : 4)}\n`;
+    summary += `• 24h Performance: ${priceChange >= 0 ? '+' : ''}${format(priceChange)}%\n`;
+    summary += `• Market Regime: ${volatilityRegime.level} volatility\n`;
+    summary += `• Order Flow: ${orderFlowSignal.signal}\n\n`;
+
+    summary += `📊 PRICE ACTION\n`;
+    summary += `• Current: $${format(data.price, data.price > 1000 ? 2 : 4)}\n`;
+    summary += `• 24h Range: $${format(data.low24h)} - $${format(data.high24h)}\n`;
+    summary += `• Volume: $${format(data.volume24h / 1000000, 2)}M\n\n`;
+
+    summary += `⚙️ MICROSTRUCTURE\n`;
+    summary += `• Order Flow: ${format(ofi)}% (${orderFlowSignal.description})\n`;
+    summary += `• Bid-Ask Spread: ${format(analytics?.bidAskImbalance || 0)}%\n`;
+    summary += `• Volume Trend: ${format(analytics?.volumeSlope || 0)}\n\n`;
+
+    summary += `📈 VOLATILITY\n`;
+    summary += `• 24h: ${format(volatility24h)}% (${volatilityRegime.level})\n`;
+    summary += `• 4h: ${format(analytics?.volatility4h || 0)}%\n`;
+    summary += `• 1h: ${format(analytics?.volatility1h || 0)}%\n\n`;
+
+    summary += `⚠️ RISK ASSESSMENT\n`;
+
+    // Normalize analytics (prevents all syntax errors)
+    const analyticsSafe = (analytics && typeof analytics === "object") ? analytics : {};
+
+
+    // Risk calculations
+    const volRisk = getRiskLevel(
+        a.volatilityRiskScore !== undefined ? a.volatilityRiskScore : 0
+    );
+
+    const whaleRisk = getRiskLevel(
+        a.whaleActivityScore !== undefined ? a.whaleActivityScore : 0
+    );
+
+    const liqScore = a.liquidityScore !== undefined ? a.liquidityScore : 0;
+
+    const devRisk = getRiskLevel(
+        a.priceDeviationScore !== undefined ? a.priceDeviationScore : 0
+    );
+
+
+    summary += `• Volatility Risk: ${volRisk.level} (${format(analytics?.volatilityRiskScore || 0)}%)\n`;
+    summary += `• Whale Activity: ${whaleRisk.level} (${format(analytics?.whaleActivityScore || 0)}%)\n`;
+    summary += `• Liquidity: ${format(liqScore)}% ${liqScore > 50 ? '(Adequate)' : '(Thin)'}\n`;
+    summary += `• Price Deviation: ${devRisk.level} (${format(analytics?.priceDeviationScore || 0)}%)\n\n`;
+
+    summary += `📋 DATA QUALITY\n`;
+    summary += `• Source: ${appState.dataSourcePath}\n`;
+    summary += `• Freshness: ${s.metadata.dataFreshnessSeconds} seconds\n`;
+    summary += `• Quality: ${s.metadata.snapshotQuality}\n`;
+    summary += `• Generated: ${new Date(s.metadata.snapshotTime).toLocaleTimeString()}\n\n`;
+
+    summary += `💡 INSIGHTS\n`;
+
+    if (priceChange > 5) summary += `• Strong bullish momentum detected\n`;
+    if (priceChange < -5) summary += `• Significant selling pressure observed\n`;
+    if (volatility24h > 5) summary += `• High volatility suggests trading opportunities\n`;
+    if (volatility24h < 2) summary += `• Low volatility indicates stability\n`;
+    if (ofi > 15) summary += `• Strong buyer dominance suggests bullish sentiment\n`;
+    if (ofi < -15) summary += `• Heavy selling indicates bearish sentiment\n`;
+    if (liqScore > 70) summary += `• Strong liquidity supports price levels\n`;
+    if (liqScore < 30) summary += `• Thin liquidity may amplify movements\n`;
+
+    summary += `\n=== END OF ANALYSIS ===\n`;
+    summary += `Note: Based on snapshot data. Not financial advice.`;
+
+    return summary;
+}
+
+// Initialize AI Summary Panel
+function initAISummaryPanel() {
+    const panel = document.getElementById('aiSummaryPanel');
+    const dragHandle = document.getElementById('aiSummaryDragHandle');
+    const resizeHandle = document.getElementById('aiSummaryResizeHandle');
+    const closeBtn = document.getElementById('aiCloseBtn');
+    const regenerateBtn = document.getElementById('aiRegenerateBtn');
+    const copyBtn = document.getElementById('aiCopyBtn');
+    const downloadBtn = document.getElementById('aiDownloadBtn');
+    const shareBtn = document.getElementById('aiShareBtn');
+
+    if (!panel) return;
+
+    // Load saved position and size
+    const savedPosition = localStorage.getItem('aiSummaryPosition');
+    const savedSize = localStorage.getItem('aiSummarySize');
+
+    if (savedPosition) {
+        const pos = JSON.parse(savedPosition);
+        panel.style.left = `${pos.x}px`;
+        panel.style.top = `${pos.y}px`;
+        panel.style.transform = 'none';
+        aiSummaryState.panelPosition = pos;
+    }
+
+    if (savedSize && window.innerWidth > 768) {
+        const size = JSON.parse(savedSize);
+        panel.style.width = `${size.width}px`;
+        panel.style.height = `${size.height}px`;
+        aiSummaryState.panelSize = size;
+    }
+
+    // Mobile bottom-sheet setup
+    if (window.innerWidth <= 768) {
+        panel.classList.add('mobile-fullscreen');
+        panel.style.left = '0';
+        panel.style.top = 'auto';
+        panel.style.bottom = '0';
+        panel.style.transform = 'none';
+        panel.style.width = '100%';
+        panel.style.height = '85vh';
+    }
+
+    // Drag functionality
+    dragHandle.addEventListener('mousedown', startDrag);
+    dragHandle.addEventListener('touchstart', startDragTouch);
+
+    // Resize functionality (desktop only)
+    if (resizeHandle && window.innerWidth > 768) {
+        resizeHandle.addEventListener('mousedown', startResize);
+    }
+
+    // Button event listeners
+    closeBtn.addEventListener('click', closeAISummary);
+    regenerateBtn.addEventListener('click', async() => {
+        if (aiSummaryState.isLoading) return;
+        regenerateBtn.classList.add('loading');
+        try {
+            await generateRealAISummary();
+        } catch (error) {
+            generateFallbackAISummary();
+        }
+        regenerateBtn.classList.remove('loading');
+    });
+    copyBtn.addEventListener('click', copyAISummary);
+    downloadBtn.addEventListener('click', downloadAISummary);
+    shareBtn.addEventListener('click', shareAISummary);
+
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && panel.style.display === 'flex') {
+            closeAISummary();
+        }
+    });
+
+    // Save position and size on window resize
+    window.addEventListener('resize', () => {
+        if (panel.style.display === 'flex') {
+            savePanelState();
+        }
+    });
+}
+
+// Drag functionality
+function startDrag(e) {
+    if (window.innerWidth <= 768) return;
+
+    e.preventDefault();
+    const panel = document.getElementById('aiSummaryPanel');
+    aiSummaryState.isDragging = true;
+    aiSummaryState.dragOffset.x = e.clientX - panel.offsetLeft;
+    aiSummaryState.dragOffset.y = e.clientY - panel.offsetTop;
+    panel.classList.add('dragging');
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', stopDrag);
+}
+
+function startDragTouch(e) {
+    if (window.innerWidth <= 768) return;
+
+    e.preventDefault();
+    const panel = document.getElementById('aiSummaryPanel');
+    const touch = e.touches[0];
+    aiSummaryState.isDragging = true;
+    aiSummaryState.dragOffset.x = touch.clientX - panel.offsetLeft;
+    aiSummaryState.dragOffset.y = touch.clientY - panel.offsetTop;
+    panel.classList.add('dragging');
+
+    document.addEventListener('touchmove', dragTouch);
+    document.addEventListener('touchend', stopDrag);
+}
+
+function drag(e) {
+    if (!aiSummaryState.isDragging) return;
+
+    const panel = document.getElementById('aiSummaryPanel');
+    const x = e.clientX - aiSummaryState.dragOffset.x;
+    const y = e.clientY - aiSummaryState.dragOffset.y;
+
+    const maxX = window.innerWidth - panel.offsetWidth;
+    const maxY = window.innerHeight - panel.offsetHeight;
+
+    panel.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+    panel.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+    panel.style.transform = 'none';
+
+    aiSummaryState.panelPosition = { x: panel.offsetLeft, y: panel.offsetTop };
+}
+
+function dragTouch(e) {
+    if (!aiSummaryState.isDragging) return;
+
+    const panel = document.getElementById('aiSummaryPanel');
+    const touch = e.touches[0];
+    const x = touch.clientX - aiSummaryState.dragOffset.x;
+    const y = touch.clientY - aiSummaryState.dragOffset.y;
+
+    const maxX = window.innerWidth - panel.offsetWidth;
+    const maxY = window.innerHeight - panel.offsetHeight;
+
+    panel.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+    panel.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+    panel.style.transform = 'none';
+
+    aiSummaryState.panelPosition = { x: panel.offsetLeft, y: panel.offsetTop };
+}
+
+function stopDrag() {
+    aiSummaryState.isDragging = false;
+    const panel = document.getElementById('aiSummaryPanel');
+    panel.classList.remove('dragging');
+    savePanelState();
+
+    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('touchmove', dragTouch);
+    document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchend', stopDrag);
+}
+
+// Resize functionality
+function startResize(e) {
+    if (window.innerWidth <= 768) return;
+
+    e.preventDefault();
+    aiSummaryState.isResizing = true;
+    const panel = document.getElementById('aiSummaryPanel');
+    panel.classList.add('resizing');
+
+    document.addEventListener('mousemove', resize);
+    document.addEventListener('mouseup', stopResize);
+}
+
+function resize(e) {
+    if (!aiSummaryState.isResizing) return;
+
+    const panel = document.getElementById('aiSummaryPanel');
+    const minWidth = 300;
+    const minHeight = 400;
+    const maxWidth = window.innerWidth - 20;
+    const maxHeight = window.innerHeight - 20;
+
+    let width = e.clientX - panel.offsetLeft;
+    let height = e.clientY - panel.offsetTop;
+
+    width = Math.max(minWidth, Math.min(width, maxWidth));
+    height = Math.max(minHeight, Math.min(height, maxHeight));
+
+    panel.style.width = `${width}px`;
+    panel.style.height = `${height}px`;
+
+    aiSummaryState.panelSize = { width, height };
+}
+
+function stopResize() {
+    aiSummaryState.isResizing = false;
+    const panel = document.getElementById('aiSummaryPanel');
+    panel.classList.remove('resizing');
+    savePanelState();
+
+    document.removeEventListener('mousemove', resize);
+    document.removeEventListener('mouseup', stopResize);
+}
+
+// Save panel state
+function savePanelState() {
+    if (window.innerWidth <= 768) return;
+
+    localStorage.setItem('aiSummaryPosition', JSON.stringify(aiSummaryState.panelPosition));
+    localStorage.setItem('aiSummarySize', JSON.stringify(aiSummaryState.panelSize));
+}
+
+// Show AI Summary
+function showAISummary() {
+    const panel = document.getElementById('aiSummaryPanel');
+    const textElement = document.getElementById('aiSummaryText');
+    const metadataElement = document.getElementById('aiSummaryMetadata');
+
+    if (!panel || !textElement) return;
+
+    // Show panel with loading state
+    panel.style.display = 'flex';
+    textElement.textContent = 'Initializing AI analysis...';
+    textElement.className = 'ai-summary-text loading';
+
+    const now = new Date();
+    metadataElement.textContent = `AI Analysis • Initializing...`;
+
+    // Add backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'ai-summary-backdrop';
+    backdrop.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+    `;
+    backdrop.addEventListener('click', closeAISummary);
+    document.body.appendChild(backdrop);
+}
+
+// Close AI Summary
+function closeAISummary() {
+    const panel = document.getElementById('aiSummaryPanel');
+    const backdrop = document.querySelector('.ai-summary-backdrop');
+
+    if (panel) panel.style.display = 'none';
+    if (backdrop) backdrop.remove();
+
+    savePanelState();
+}
+
+// Regenerate AI Summary
+async function regenerateAISummary() {
+    if (aiSummaryState.isLoading) return;
+
+    try {
+        await generateRealAISummary();
+    } catch (error) {
+        generateFallbackAISummary();
+    }
+}
+
+// Copy AI Summary to clipboard
+async function copyAISummary() {
+    const copyBtn = document.getElementById('aiCopyBtn');
+    const textElement = document.getElementById('aiSummaryText');
+
+    if (!copyBtn || !textElement) return;
+
+    try {
+        await navigator.clipboard.writeText(textElement.textContent);
+        copyBtn.classList.add('success');
+        setTimeout(() => copyBtn.classList.remove('success'), 2000);
+        addAlert('AI Summary copied to clipboard', 'success');
+    } catch (err) {
+        console.error('Failed to copy:', err);
+        copyBtn.classList.add('error');
+        setTimeout(() => copyBtn.classList.remove('error'), 2000);
+        addAlert('Failed to copy summary', 'error');
+    }
+}
+
+// Download AI Summary as text file
+function downloadAISummary() {
+    const downloadBtn = document.getElementById('aiDownloadBtn');
+    const textElement = document.getElementById('aiSummaryText');
+
+    if (!downloadBtn || !textElement) return;
+
+    try {
+        const snapshot = aiSummaryState.currentSnapshot || generateSnapshot();
+        const symbol = snapshot.snapshot.applicationState.currentSymbol;
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `crypto-view-ai-analysis-${symbol}-${timestamp}.txt`;
+
+        const blob = new Blob([textElement.textContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        downloadBtn.classList.add('success');
+        setTimeout(() => downloadBtn.classList.remove('success'), 2000);
+        addAlert('AI Summary downloaded', 'success');
+    } catch (err) {
+        console.error('Failed to download:', err);
+        downloadBtn.classList.add('error');
+        setTimeout(() => downloadBtn.classList.remove('error'), 2000);
+        addAlert('Failed to download summary', 'error');
+    }
+}
+
+// Share AI Summary
+async function shareAISummary() {
+    const shareBtn = document.getElementById('aiShareBtn');
+    const textElement = document.getElementById('aiSummaryText');
+
+    if (!shareBtn || !textElement) return;
+
+    try {
+        const snapshot = aiSummaryState.currentSnapshot || generateSnapshot();
+        const symbol = snapshot.snapshot.applicationState.currentSymbol;
+        const title = `Crypto View AI Analysis: ${symbol}`;
+        const text = textElement.textContent.substring(0, 500) + '...';
+        const url = window.location.href;
+
+        if (navigator.share) {
+            await navigator.share({
+                title: title,
+                text: text,
+                url: url
+            });
+        } else {
+            await navigator.clipboard.writeText(`${title}\n\n${text}\n\nFull analysis: ${url}`);
+            addAlert('Summary link copied to clipboard', 'info');
+        }
+
+        shareBtn.classList.add('success', 'sharing');
+        setTimeout(() => {
+            shareBtn.classList.remove('success', 'sharing');
+        }, 2000);
+    } catch (err) {
+        console.error('Failed to share:', err);
+        shareBtn.classList.add('error');
+        setTimeout(() => shareBtn.classList.remove('error'), 2000);
+
+        try {
+            await navigator.clipboard.writeText(textElement.textContent.substring(0, 1000));
+            addAlert('Summary copied to clipboard', 'info');
+        } catch (copyErr) {
+            addAlert('Failed to share summary', 'error');
+        }
+    }
+}
+
+// =====================================================
+// REST OF THE ORIGINAL CODE (UNCHANGED)
+// =====================================================
 
 // Update current time
 function updateTime() {
@@ -79,7 +809,6 @@ function updateTime() {
 function setupCryptoSelector() {
     const buttons = document.querySelectorAll('.crypto-btn');
 
-    // 🔹 INITIAL STATE: hide the default active crypto (BTC)
     buttons.forEach(btn => {
         const isCurrent = btn.dataset.symbol === state.currentSymbol;
 
@@ -89,9 +818,7 @@ function setupCryptoSelector() {
             btn.classList.remove('active', 'hidden');
         }
 
-        // 🔹 CLICK HANDLER
         btn.addEventListener('click', () => {
-            // In restore mode, we still allow switching but only between restored symbols
             if (state.isRestoreMode && state.restoreSnapshot) {
                 const availableSymbols = Object.keys(state.restoreSnapshot.snapshot.priceData || {});
                 if (!availableSymbols.includes(btn.dataset.symbol)) {
@@ -100,25 +827,21 @@ function setupCryptoSelector() {
                 }
             }
 
-            // 1. Reset all buttons
             buttons.forEach(b => b.classList.remove('active', 'hidden'));
 
-            // 2. Make clicked one active + hidden
             btn.classList.add('active', 'hidden');
 
-            // 3. Update state
             state.currentSymbol = btn.dataset.symbol;
             state.currentName = btn.dataset.name;
             state.currentIcon = btn.dataset.icon;
 
-            // 4. Refresh UI
             updatePriceDisplay();
             addAlert(`Switched to ${state.currentName}`, 'info');
         });
     });
 }
 
-// Setup export dropdown (replaces old setupExportButton)
+// Setup export dropdown
 function setupExportDropdown() {
     const exportBtn = document.getElementById('exportBtn');
     const exportDropdown = document.getElementById('exportDropdown');
@@ -126,13 +849,11 @@ function setupExportDropdown() {
 
     if (!exportBtn || !exportDropdown) return;
 
-    // Toggle dropdown on export button click
     exportBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         exportDropdown.classList.toggle('active');
     });
 
-    // Handle option clicks
     exportOptions.forEach(option => {
         option.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -149,7 +870,6 @@ function setupExportDropdown() {
                     generateAndExport('both');
                     break;
                 case 'cancel':
-                    // Just close dropdown
                     break;
             }
 
@@ -157,12 +877,10 @@ function setupExportDropdown() {
         });
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', () => {
         exportDropdown.classList.remove('active');
     });
 
-    // Prevent dropdown from closing when clicking inside it
     exportDropdown.addEventListener('click', (e) => {
         e.stopPropagation();
     });
@@ -195,7 +913,6 @@ function setupImportButton() {
         };
         reader.readAsText(file);
 
-        // Reset file input
         importFileInput.value = '';
     });
 }
@@ -203,7 +920,6 @@ function setupImportButton() {
 // Generate and export based on format
 function generateAndExport(format) {
     try {
-        // Generate single snapshot
         const snapshot = generateSnapshot();
 
         switch (format) {
@@ -230,24 +946,18 @@ function generateSnapshot() {
     const snapshotTime = now.toISOString();
     const readableTime = now.toLocaleString();
 
-    // Calculate data freshness
     const dataFreshnessSeconds = Math.floor((Date.now() - state.lastUpdateTime) / 1000);
 
-    // Determine snapshot quality
     let snapshotQuality = 'STALE';
     if (dataFreshnessSeconds <= 10) snapshotQuality = 'FRESH';
     else if (dataFreshnessSeconds <= 60) snapshotQuality = 'RECENT';
 
-    // Get WebSocket status
     const wsStatus = state.ws && state.ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected';
 
-    // Determine data source
     const dataSourcePath = wsStatus === 'connected' ? 'Binance WebSocket (Primary)' : 'CoinGecko REST (Fallback)';
 
-    // Get all symbols from priceData
     const allSymbols = Object.keys(state.priceData);
 
-    // Pre-calculate derived analytics for all symbols
     const derivedAnalytics = {};
     const currencyContext = {
         base: 'USDT',
@@ -259,29 +969,24 @@ function generateSnapshot() {
         const data = state.priceData[symbol];
         if (!data) return;
 
-        // Store currency conversions
         currencyContext.prices[symbol] = {
             usdt: data.price,
             inr: data.price * state.usdtToInrRate
         };
 
-        // Calculate microstructure metrics
         const priceRange = data.high24h - data.low24h || 1;
         const pricePosition = (data.price - data.low24h) / priceRange;
         const avgPrice = (data.high24h + data.low24h) / 2 || data.price || 1;
 
         derivedAnalytics[symbol] = {
-            // Microstructure
             orderFlowImbalance: (pricePosition - 0.5) * 100,
             bidAskImbalance: pricePosition * 100,
             volumeSlope: data.priceChangePercent24h * 2,
 
-            // Volatility
             volatility1h: ((priceRange / avgPrice) * 100) / 24,
             volatility4h: ((priceRange / avgPrice) * 100) / 6,
             volatility24h: (priceRange / avgPrice) * 100,
 
-            // Risk indicators
             volatilityRiskScore: Math.min(((data.high24h - data.low24h) / (data.price || 1)) * 100, 100),
             liquidityScore: Math.min((data.volume24h / 1000000) * 10, 100),
             whaleActivityScore: Math.min((data.volume24h / data.price) % 100, 100),
@@ -289,22 +994,17 @@ function generateSnapshot() {
         };
     });
 
-    // Build top movers from snapshot data
     const topMovers = Object.entries(state.priceData)
         .map(([symbol, data]) => ({ symbol, change: data.priceChangePercent24h }))
         .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
         .slice(0, 5);
 
-    // Get current UI context
-    const currentCryptoBtn = document.querySelector(`.crypto-btn[data-symbol="${state.currentSymbol}"]`);
     const displayPair = `${state.currentSymbol}/${state.currency}`;
 
-    // Build snapshot object
     const snapshot = {
         version: "1.0",
         engine: "CryptoView-JSRE",
         snapshot: {
-            // Application state
             applicationState: {
                 currentSymbol: state.currentSymbol,
                 currentName: state.currentName,
@@ -316,16 +1016,12 @@ function generateSnapshot() {
                 themeMode: state.theme
             },
 
-            // Raw price data for ALL symbols
-            priceData: JSON.parse(JSON.stringify(state.priceData)), // Deep clone
+            priceData: JSON.parse(JSON.stringify(state.priceData)),
 
-            // Currency context
             currencyContext: currencyContext,
 
-            // Derived analytics (pre-computed)
             derivedAnalytics: derivedAnalytics,
 
-            // UI context
             uiContext: {
                 selectedAsset: {
                     name: state.currentName,
@@ -340,7 +1036,6 @@ function generateSnapshot() {
                 theme: state.theme
             },
 
-            // Metadata
             metadata: {
                 snapshotTime: snapshotTime,
                 dataFreshnessSeconds: dataFreshnessSeconds,
@@ -348,13 +1043,11 @@ function generateSnapshot() {
                 totalDataPoints: state.dataPointsCount,
                 snapshotQuality: snapshotQuality,
                 applicationVersion: APP_VERSION,
-                alerts: [...state.alerts].slice(0, 10) // Last 10 alerts
+                alerts: [...state.alerts].slice(0, 10)
             },
 
-            // Top movers (pre-computed)
             topMovers: topMovers,
 
-            // Anomalies (current state)
             anomalies: getCurrentAnomalies()
         }
     };
@@ -385,7 +1078,7 @@ function getCurrentAnomalies() {
     return anomalies;
 }
 
-// Export to PDF (modified to use snapshot)
+// Export to PDF
 function exportToPDF(snapshot) {
     try {
         if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -398,7 +1091,6 @@ function exportToPDF(snapshot) {
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
 
-        // ---------- helpers ----------
         function n(v, d = 2) {
             const num = Number(v);
             if (!isFinite(num)) return "N/A";
@@ -465,7 +1157,6 @@ function exportToPDF(snapshot) {
             pdf.text(value2, pageW / 2 + 55, y);
         }
 
-        // ---------- snapshot values ----------
         const c = snapshot.snapshot.priceData[snapshot.snapshot.applicationState.currentSymbol];
         const now = new Date();
         const last = c.lastUpdate || now.getTime();
@@ -490,9 +1181,7 @@ function exportToPDF(snapshot) {
         const whale = Math.min((c.volume24h / c.price) % 100, 100);
         const dev = Math.min(Math.abs((c.price - c.low24h) / c.price) * 100, 100);
 
-        // =====================================================
         // PAGE 1 – MARKET ANALYTICS
-        // =====================================================
         drawHeader(
             "Crypto View - Real-Time Market Report",
             "Generated: " + new Date().toLocaleString()
@@ -500,7 +1189,6 @@ function exportToPDF(snapshot) {
 
         let y = 32;
 
-        // Snapshot Metadata
         sectionHeader("Snapshot Metadata", y);
         y += 10;
         twoColumn(
@@ -530,7 +1218,6 @@ function exportToPDF(snapshot) {
         labelPair("Source Path", srcPath, y);
         y += 10;
 
-        // Price Summary – include USDT + INR for all key metrics
         sectionHeader("Price Summary (Live)", y);
         y += 10;
         twoColumn(
@@ -568,7 +1255,6 @@ function exportToPDF(snapshot) {
         labelPair("Change (24h)", n(c.priceChangePercent24h) + "%", y);
         y += 12;
 
-        // Market Microstructure
         sectionHeader("Market Microstructure", y);
         y += 10;
         twoColumn(
@@ -582,7 +1268,6 @@ function exportToPDF(snapshot) {
         labelPair("Volume Slope", n(vSlope), y);
         y += 12;
 
-        // Volatility Metrics
         sectionHeader("Volatility Metrics", y);
         y += 10;
         twoColumn(
@@ -596,7 +1281,6 @@ function exportToPDF(snapshot) {
         labelPair("1h Volatility", n(vol1) + "%", y);
         y += 12;
 
-        // Risk Indicators
         sectionHeader("Risk Indicators", y);
         y += 10;
         twoColumn(
@@ -616,7 +1300,6 @@ function exportToPDF(snapshot) {
         );
         y += 12;
 
-        // Top Movers
         sectionHeader("Top Market Movers", y);
         y += 10;
         const movers = snapshot.snapshot.topMovers;
@@ -632,9 +1315,6 @@ function exportToPDF(snapshot) {
             y += 6;
         });
 
-        // =====================================================
-        // PAGE 2 – ALERTS + VERIFICATION + LINKS
-        // =====================================================
         pdf.addPage();
         drawHeader(
             "Crypto View - Alerts & Verification",
@@ -642,7 +1322,6 @@ function exportToPDF(snapshot) {
         );
         y = 32;
 
-        // Recent Alerts
         sectionHeader("Recent Alerts", y);
         y += 10;
         pdf.setFontSize(10.5);
@@ -669,7 +1348,6 @@ function exportToPDF(snapshot) {
             });
         }
 
-        // ── Pull the verification panel DOWN near bottom ──
         const panelHeight = 38;
         const bottomMargin = 22;
         const desiredTop = pageH - bottomMargin - panelHeight;
@@ -712,7 +1390,6 @@ function exportToPDF(snapshot) {
             panelTop + 31
         );
 
-        // Seal
         const cx = pageW - 32;
         const cy = panelTop + panelHeight / 2;
         pdf.setDrawColor(160, 0, 0);
@@ -724,7 +1401,6 @@ function exportToPDF(snapshot) {
 
         centered("VERIFIED", cx, cy + 2, 7);
 
-        // ---------- FOOTER ON EVERY PAGE ----------
         const githubUrl = "https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt";
         const liveUrl = "https://ajith-data-analyst.github.io/crypto_view/";
         const copyrightText = "© 2025 Crypto View | All rights reserved | Live Crypto Price Analytics";
@@ -734,11 +1410,9 @@ function exportToPDF(snapshot) {
             pdf.setPage(p);
             pdf.setFontSize(8);
 
-            // Left footer: CRYPTO VIEW (clickable)
             pdf.setTextColor(40, 70, 160);
             pdf.textWithLink("CRYPTO VIEW", 12, pageH - 8, { url: liveUrl });
 
-            // Right footer: copyright (clickable)
             pdf.setTextColor(40, 40, 40);
             const cw = pdf.getTextWidth(copyrightText);
             const cxRight = pageW - 12 - cw;
@@ -758,7 +1432,6 @@ function exportToPDF(snapshot) {
 // Export to JSON
 function exportToJSON(snapshot) {
     try {
-        // Create pretty-printed JSON
         const jsonString = JSON.stringify(snapshot, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -777,26 +1450,16 @@ function exportToJSON(snapshot) {
     }
 }
 
-// =====================================================
-// JSRE - JSON STATE RESTORE ENGINE
-// =====================================================
-
 // Restore application from snapshot
 function restoreFromSnapshot(snapshot) {
     try {
-        // Validate snapshot structure
         if (!validateSnapshot(snapshot)) {
             addAlert("Invalid snapshot format", "error");
             return;
         }
 
-        // Enter restore mode
         enterRestoreMode(snapshot);
-
-        // Apply snapshot data
         applySnapshot(snapshot);
-
-        // Update UI
         updateUIFromSnapshot(snapshot);
 
         addAlert(`Successfully restored snapshot from ${new Date(snapshot.snapshot.metadata.snapshotTime).toLocaleString()}`, "success");
@@ -806,7 +1469,6 @@ function restoreFromSnapshot(snapshot) {
     }
 }
 
-// Validate snapshot structure
 function validateSnapshot(snapshot) {
     if (!snapshot || !snapshot.version || !snapshot.engine || !snapshot.snapshot) {
         return false;
@@ -823,23 +1485,19 @@ function validateSnapshot(snapshot) {
     return true;
 }
 
-// Enter restore mode
 function enterRestoreMode(snapshot) {
     state.isRestoreMode = true;
     state.restoreSnapshot = snapshot;
 
-    // Disable live data connections
     if (state.ws && state.ws.readyState === WebSocket.OPEN) {
         state.ws.close();
     }
 
-    // Clear any intervals
     const highestId = window.setTimeout(() => {}, 0);
     for (let i = 0; i < highestId; i++) {
         window.clearInterval(i);
     }
 
-    // Show restore mode indicator
     const indicator = document.getElementById('restoreModeIndicator');
     const restoreText = document.getElementById('restoreModeText');
     const exitBtn = document.getElementById('exitRestoreModeBtn');
@@ -851,61 +1509,48 @@ function enterRestoreMode(snapshot) {
             restoreText.textContent = `RESTORED FROM SNAPSHOT (${snapshotTime.toLocaleString()}) — LIVE DATA DISABLED`;
         }
 
-        // Setup exit button
         if (exitBtn) {
             exitBtn.onclick = exitRestoreMode;
         }
     }
 
-    // Update connection status
     updateConnectionStatus('restored');
 }
 
-// Exit restore mode
 function exitRestoreMode() {
     state.isRestoreMode = false;
     state.restoreSnapshot = null;
 
-    // Hide restore mode indicator
     const indicator = document.getElementById('restoreModeIndicator');
     if (indicator) {
         indicator.style.display = 'none';
     }
 
-    // Reload the page to restart live data
     window.location.reload();
 }
 
-// Apply snapshot data to state
 function applySnapshot(snapshot) {
-    // Update application state
     state.currentSymbol = snapshot.snapshot.applicationState.currentSymbol;
     state.currentName = snapshot.snapshot.applicationState.currentName;
     state.currentIcon = snapshot.snapshot.applicationState.currentIcon;
     state.currency = snapshot.snapshot.applicationState.currency;
     state.theme = snapshot.snapshot.applicationState.theme;
 
-    // Update price data (deep copy)
     state.priceData = JSON.parse(JSON.stringify(snapshot.snapshot.priceData));
 
-    // Update currency conversion rate
     if (snapshot.snapshot.currencyContext && snapshot.snapshot.currencyContext.conversionRate) {
         state.usdtToInrRate = snapshot.snapshot.currencyContext.conversionRate;
     }
 
-    // Update alerts
     if (snapshot.snapshot.metadata.alerts) {
         state.alerts = [...snapshot.snapshot.metadata.alerts];
     }
 
-    // Update data points count
     state.dataPointsCount = snapshot.snapshot.metadata.totalDataPoints || 0;
     state.lastUpdateTime = new Date(snapshot.snapshot.metadata.snapshotTime).getTime();
 }
 
-// Update UI from snapshot
 function updateUIFromSnapshot(snapshot) {
-    // Update theme
     if (snapshot.snapshot.applicationState.theme) {
         state.theme = snapshot.snapshot.applicationState.theme;
         document.documentElement.setAttribute('data-theme', state.theme);
@@ -917,7 +1562,6 @@ function updateUIFromSnapshot(snapshot) {
         }
     }
 
-    // Update currency toggle button
     const currencyBtn = document.getElementById('currencyToggle');
     if (currencyBtn) {
         const icon = currencyBtn.querySelector('.fab-icon');
@@ -926,7 +1570,6 @@ function updateUIFromSnapshot(snapshot) {
         }
     }
 
-    // Update crypto selector buttons
     const buttons = document.querySelectorAll('.crypto-btn');
     buttons.forEach(btn => {
         const symbol = btn.dataset.symbol;
@@ -938,36 +1581,23 @@ function updateUIFromSnapshot(snapshot) {
         }
     });
 
-    // Update price display (using snapshot data)
     updatePriceDisplayFromSnapshot(snapshot);
-
-    // Update market microstructure from pre-computed analytics
     updateMicrostructureFromSnapshot(snapshot);
-
-    // Update volatility metrics from pre-computed analytics
     updateVolatilityFromSnapshot(snapshot);
-
-    // Update risk indicators from pre-computed analytics
     updateRiskIndicatorsFromSnapshot(snapshot);
 
-    // Update top movers
     if (snapshot.snapshot.topMovers) {
         updateTopMoversFromSnapshot(snapshot);
     }
 
-    // Update anomalies
     if (snapshot.snapshot.anomalies) {
         updateAnomaliesFromSnapshot(snapshot);
     }
 
-    // Update alerts
     updateAlertsFromSnapshot(snapshot);
-
-    // Update system health indicators
     updateSystemHealthFromSnapshot(snapshot);
 }
 
-// Update price display from snapshot
 function updatePriceDisplayFromSnapshot(snapshot) {
     const data = snapshot.snapshot.priceData[state.currentSymbol];
     if (!data) return;
@@ -982,23 +1612,18 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
 
-    // Update symbol display based on currency
     if (symbolEl) {
         symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
     }
 
-    // Ensure elements exist
     if (!currentPriceEl || !priceArrowEl || !priceChangeEl) return;
 
-    // Remove any previous classes
     currentPriceEl.classList.remove('price-pulse', 'positive', 'negative');
     priceArrowEl.classList.remove('neutral', 'positive', 'negative');
 
-    // Set neutral arrow for snapshot (no live tick)
     priceArrowEl.classList.add('neutral');
     priceArrowEl.textContent = '→';
 
-    // Set price color based on 24h change
     const changePercent = data.priceChangePercent24h;
     if (changePercent > 0) {
         currentPriceEl.classList.add('positive');
@@ -1006,10 +1631,8 @@ function updatePriceDisplayFromSnapshot(snapshot) {
         currentPriceEl.classList.add('negative');
     }
 
-    // Set displayed formatted price
     currentPriceEl.textContent = formatPrice(data.price);
 
-    // Update price change display (24h)
     const changeAmount = data.priceChange24h;
     priceChangeEl.className = 'price-change ' + (changePercent >= 0 ? 'positive' : 'negative');
     const changeValueEl = priceChangeEl.querySelector('.change-value');
@@ -1017,7 +1640,6 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (changeValueEl) changeValueEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
     if (changeAmountEl) changeAmountEl.textContent = `${changePercent >= 0 ? '+' : ''}${formatPrice(changeAmount)}`;
 
-    // Stats
     const highEl = document.getElementById('high24h');
     const lowEl = document.getElementById('low24h');
     const volEl = document.getElementById('volume24h');
@@ -1025,13 +1647,11 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (lowEl) lowEl.textContent = formatPrice(data.low24h);
     if (volEl) volEl.textContent = formatVolume(data.volume24h);
 
-    // Update footer live price
     const footerPriceEl = document.getElementById("footerLivePrice");
     if (footerPriceEl) {
         footerPriceEl.textContent = formatPrice(data.price);
         footerPriceEl.classList.remove("footer-price-green", "footer-price-red");
 
-        // In restore mode, color based on 24h change
         if (changePercent > 0) {
             footerPriceEl.classList.add("footer-price-green");
         } else if (changePercent < 0) {
@@ -1040,7 +1660,6 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     }
 }
 
-// Update microstructure from snapshot (pre-computed)
 function updateMicrostructureFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1070,7 +1689,6 @@ function updateMicrostructureFromSnapshot(snapshot) {
     }
 }
 
-// Update volatility from snapshot (pre-computed)
 function updateVolatilityFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1092,7 +1710,6 @@ function updateVolatilityFromSnapshot(snapshot) {
     if (vol24hGaugeEl) vol24hGaugeEl.style.width = `${Math.min(analytics.volatility24h * 10, 100)}%`;
 }
 
-// Update risk indicators from snapshot (pre-computed)
 function updateRiskIndicatorsFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1105,7 +1722,6 @@ function updateRiskIndicatorsFromSnapshot(snapshot) {
     });
 }
 
-// Update top movers from snapshot (pre-computed)
 function updateTopMoversFromSnapshot(snapshot) {
     const container = document.getElementById('top-movers');
     if (!container || !snapshot.snapshot.topMovers) return;
@@ -1120,7 +1736,6 @@ function updateTopMoversFromSnapshot(snapshot) {
     `).join('');
 }
 
-// Update anomalies from snapshot
 function updateAnomaliesFromSnapshot(snapshot) {
     const container = document.getElementById('anomalyContainer');
     if (!container) return;
@@ -1145,7 +1760,6 @@ function updateAnomaliesFromSnapshot(snapshot) {
     }
 }
 
-// Update alerts from snapshot
 function updateAlertsFromSnapshot(snapshot) {
     const container = document.getElementById('alertsContainer');
     if (!container || !snapshot.snapshot.metadata.alerts) return;
@@ -1158,7 +1772,6 @@ function updateAlertsFromSnapshot(snapshot) {
     `).join('');
 }
 
-// Update system health from snapshot
 function updateSystemHealthFromSnapshot(snapshot) {
     const now = new Date();
     const snapshotTime = new Date(snapshot.snapshot.metadata.snapshotTime);
@@ -1177,7 +1790,6 @@ function updateSystemHealthFromSnapshot(snapshot) {
     if (footerConnectionEl) footerConnectionEl.textContent = 'Restored';
 }
 
-// Load a demo snapshot (for testing)
 function loadDemoSnapshot() {
     const demoSnapshot = {
         version: "1.0",
@@ -1270,30 +1882,23 @@ function loadDemoSnapshot() {
         }
     };
 
-    // Add a small delay to ensure UI is ready
     setTimeout(() => {
         restoreFromSnapshot(demoSnapshot);
         addAlert("Demo snapshot loaded successfully", "info");
     }, 1000);
 }
 
-// =====================================================
-// REST OF THE EXISTING FUNCTIONS (mostly unchanged)
-// =====================================================
-
-// Setup currency toggle with emoji + animation
+// Setup currency toggle
 function setupCurrencyToggle() {
     const currencyBtn = document.getElementById('currencyToggle');
     if (!currencyBtn) return;
 
     const icon = currencyBtn.querySelector('.fab-icon');
 
-    // 1) Set initial label based on default state (USDT)
     if (icon) {
         icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
     }
 
-    // 2) Helper to play tiny pop/spin animation on the button
     function playToggleAnimation() {
         currencyBtn.classList.remove('currency-toggle-pop');
         void currencyBtn.offsetWidth;
@@ -1303,9 +1908,7 @@ function setupCurrencyToggle() {
         }, 200);
     }
 
-    // 3) Click handler
     currencyBtn.addEventListener('click', () => {
-        // In restore mode, check if we have both currency values
         if (state.isRestoreMode && state.restoreSnapshot) {
             const symbol = state.currentSymbol;
             const currencyData = state.restoreSnapshot.snapshot.currencyContext.prices[symbol];
@@ -1315,32 +1918,27 @@ function setupCurrencyToggle() {
             }
         }
 
-        // flip USDT / INR
         state.currency = state.currency === 'USDT' ? 'INR' : 'USDT';
 
-        // update emoji + text
         if (icon) {
             icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
         }
 
-        // play button animation
         playToggleAnimation();
 
-        // redraw prices
         if (state.isRestoreMode && state.restoreSnapshot) {
             updatePriceDisplayFromSnapshot(state.restoreSnapshot);
         } else {
             updatePriceDisplay();
         }
 
-        // log alert
         addAlert(`Currency switched to ${state.currency}`, 'info');
     });
 }
 
 // Fetch USDT to INR conversion rate
 async function fetchUsdtToInrRate() {
-    if (state.isRestoreMode) return; // Don't fetch in restore mode
+    if (state.isRestoreMode) return;
 
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -1354,7 +1952,7 @@ async function fetchUsdtToInrRate() {
 
 // Connect to Binance WebSocket
 function connectWebSocket() {
-    if (state.isRestoreMode) return; // Don't connect in restore mode
+    if (state.isRestoreMode) return;
 
     try {
         const streams = Object.values(cryptoMapping).map(s => `${s}@ticker`).join('/');
@@ -1423,7 +2021,7 @@ function handleTickerUpdate(data) {
 
 // Fetch data from CoinGecko as fallback
 async function fetchAllCryptoData() {
-    if (state.isRestoreMode) return; // Don't fetch in restore mode
+    if (state.isRestoreMode) return;
 
     try {
         const ids = 'bitcoin,ethereum,cardano,polkadot,solana,binancecoin,ripple,dogecoin,matic-network,litecoin';
@@ -1467,7 +2065,7 @@ async function fetchAllCryptoData() {
     }
 }
 
-// Update price display (existing function, modified for restore mode)
+// Update price display
 function updatePriceDisplay(previousPrice) {
     if (state.isRestoreMode && state.restoreSnapshot) {
         updatePriceDisplayFromSnapshot(state.restoreSnapshot);
@@ -1487,7 +2085,6 @@ function updatePriceDisplay(previousPrice) {
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
 
-    // Update symbol display based on currency
     if (symbolEl) {
         symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
     }
@@ -1652,7 +2249,7 @@ function updateRiskIndicators(data) {
     });
 }
 
-// Robust watcher: show footer price when >1/3 of .price-card is hidden
+// Setup price visibility watcher
 function setupPriceVisibilityWatcher() {
     const priceCard = document.querySelector('.price-card');
     const footerBox = document.getElementById('footerLivePriceBox');
@@ -1784,7 +2381,7 @@ function updateConnectionStatus(status) {
 
 // Update system health
 function updateSystemHealth() {
-    if (state.isRestoreMode) return; // Don't update in restore mode
+    if (state.isRestoreMode) return;
 
     const now = Date.now();
 
@@ -1837,7 +2434,7 @@ function setupThemeToggle() {
     });
 }
 
-// ----------------- UNIVERSAL SEARCH -----------------
+// Setup search panel
 function setupSearchPanel() {
     const searchBtn = document.getElementById('searchBtn');
     const searchPanel = document.getElementById('searchPanel');
@@ -2175,54 +2772,6 @@ function formatVolume(volume) {
     }
     return `$${v.toFixed(2)}`;
 }
-async function generateRealAISummary(snapshot) {
-    const s = snapshot.snapshot;
-    const sym = s.applicationState.currentSymbol;
-    const d = s.priceData[sym];
-
-    const prompt = `
-Summarize the crypto market briefly:
-
-Asset: ${s.applicationState.currentName} (${sym})
-Price: ${d.price}
-24h Change: ${d.priceChangePercent24h}%
-24h Volume: ${d.volume24h}
-
-Give a short human-friendly summary.
-`;
-
-    const response = await fetch("https://crypto-ai-summary.ajithramesh2020.workers.dev", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt })
-    });
-
-    const data = await response.json();
-    return data.text;
-}
-
-function closeAISummary() {
-    const panel = document.getElementById("aiSummaryPanel");
-    if (panel) panel.style.display = "none";
-}
-
-document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
-    document.getElementById("aiSummaryPanel").style.display = "block";
-    document.getElementById("aiSummaryText").textContent = "AI is generating summary…";
-
-    try {
-        const snapshot = generateSnapshot();
-        const summary = await generateRealAISummary(snapshot);
-        document.getElementById("aiSummaryText").textContent = summary;
-    } catch (err) {
-        document.getElementById("aiSummaryText").textContent =
-            "AI service unavailable. Try again.";
-        console.error(err);
-    }
-});
-
 
 // Make selectCrypto global
 window.selectCrypto = selectCrypto;

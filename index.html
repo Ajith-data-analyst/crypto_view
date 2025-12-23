@@ -7,7 +7,6 @@
     <title>Crypto View</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 </head>
 
 <body>
@@ -258,24 +257,14 @@
             <span class="fab-icon">🔍</span>
         </button>
         <button class="fab" id="aiSummaryBtn" title="AI Summary">
-    <span class="fab-icon">🧠</span>
-</button>
-
+            <span class="fab-icon">🧠</span>
+        </button>
         <button class="fab" id="currencyToggle" title="Toggle Currency">
             <span class="fab-icon">USDT</span>
         </button>
         <button class="fab" id="importBtn" title="Import Snapshot">
             <span class="fab-icon">📂</span>
         </button>
-    </div>
-    <div id="aiSummaryPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;">
-        <div style="max-width:600px;margin:8% auto;background:var(--color-surface);padding:24px;border-radius:12px">
-            <h3>🧠 AI Summary</h3>
-            <p id="aiSummaryText">Generating summary…</p>
-            <div style="text-align:right">
-                <button onclick="closeAISummary()">Close</button>
-            </div>
-        </div>
     </div>
 
     <!-- Hidden file input for import -->
@@ -291,6 +280,29 @@
         <div class="search-results" id="searchResults">
             <div class="search-result-item">Start typing to search...</div>
         </div>
+    </div>
+
+    <!-- Enhanced AI Summary Panel -->
+    <div id="aiSummaryPanel" class="ai-summary-panel" style="display:none;">
+        <div class="ai-summary-header" id="aiSummaryDragHandle">
+            <div class="ai-summary-title">🧠 AI Market Analysis</div>
+            <div class="ai-summary-controls">
+                <button class="ai-summary-btn" id="aiRegenerateBtn" title="Regenerate">↻</button>
+                <button class="ai-summary-btn" id="aiCopyBtn" title="Copy">📋</button>
+                <button class="ai-summary-btn" id="aiDownloadBtn" title="Download">↓</button>
+                <button class="ai-summary-btn" id="aiShareBtn" title="Share">↗</button>
+                <button class="ai-summary-btn" id="aiCloseBtn" title="Close">✕</button>
+            </div>
+        </div>
+        <div class="ai-summary-content" id="aiSummaryContent">
+            <div class="ai-summary-text" id="aiSummaryText">Generating market analysis...</div>
+        </div>
+        <div class="ai-summary-footer">
+            <div class="ai-summary-metadata" id="aiSummaryMetadata">
+                Analysis based on current snapshot • Generated just now
+            </div>
+        </div>
+        <div class="ai-summary-resize-handle" id="aiSummaryResizeHandle"></div>
     </div>
 
     <!-- Footer -->
@@ -350,7 +362,7 @@
                 <div style="display: flex; flex-direction: column; gap: var(--space-4);">
                     <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
                     <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Last updated: <span id="footerLastUpdate">Now</span></div>
-                    <div style="font-size: var(--font-size-sm;">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
+                    <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
                     <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
                 </div>
             </div>
