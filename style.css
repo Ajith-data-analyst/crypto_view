@@ -1726,6 +1726,37 @@ body {
     -webkit-user-select: none !important;
 }
 
+.ai-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-icon {
+    width: auto;
+    height: auto;
+    max-width: 36px;
+    max-height: 36px;
+    background: transparent;
+    /* COLOR CONTROL */
+    filter: invert(34%) sepia(72%) saturate(480%) hue-rotate(150deg) brightness(92%) contrast(95%);
+}
+
+.hf-link {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.hf-link:hover,
+.hf-link:focus,
+.hf-link:active,
+.hf-link:visited {
+    text-decoration: none;
+    color: var(--color-primary);
+}
+
 
 /* Mobile adjustments */
 

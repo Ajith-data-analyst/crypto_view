@@ -273,7 +273,7 @@
             </div>
             <button class="fab child" id="aiSummaryBtn" aria-label="AI Summary">
   <span class="fab-icon">
-    <img src="artificial-intelligence.png" alt="AI Summary">
+    <img src="artificial-intelligence.svg" alt="AI Summary" class="ai-icon">
   </span>
   <span class="fab-tooltip">Generate AI-powered market summary</span>
 </button>
@@ -331,21 +331,13 @@
           border-radius:14px 14px 0 0;
          ">
                     <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="
-                  width:36px;
-                  height:36px;
-                  border-radius:10px;
-                  background:var(--color-primary);
-                  display:flex;
-                  align-items:center;
-                  justify-content:center;
-                  color:white;
-                  font-size:18px;
-                ">
-                            🤖
+                        <div class="ai-icon-wrapper">
+                            <img src="artificial-intelligence.svg" class="ai-icon">
+
                         </div>
+
                         <div>
-                            <div style="font-weight:600;color:var(--color-text);">AI Market Summary</div>
+                            <div style="font-weight:600;color:var(--color-text);">Market Summary</div>
                             <div style="font-size:12px;color:var(--color-text-secondary);" id="aiSummaryTimestamp"></div>
                         </div>
                     </div>
@@ -409,8 +401,8 @@
                 border-radius:8px;
                 margin-bottom:16px;
             ">
-                        <span>🔍</span>
-                        <span>Snapshot-Based AI Analysis • Powered by HuggingFace</span>
+                        <span></span>
+                        <span>AI Text Summarization • For analytics only •  Not financial advice.</span>
                     </div>
                 </div>
 
@@ -427,18 +419,19 @@
             align-items:center;
         ">
                     <div style="flex:1; font-size:12px; color:var(--color-text-secondary);">
-                        📄 For analytics only. Not financial advice.
+                        Powered by
+                        <a href="https://huggingface.co" target="_blank" rel="noopener noreferrer" class="hf-link">
+    HuggingFace
+  </a>
                     </div>
+
                     <div style="display:flex; gap:10px;">
                         <button onclick="copyAISummary()" class="ai-btn primary">
                     <span>⧉</span> Copy
                 </button>
                         <button onclick="downloadAISummary()" class="ai-btn">
                     <span>⇩</span> Download
-                </button>
-                        <button onclick="shareAISummary()" class="ai-btn ">
-                    <span>⟳</span> Share
-                </button>
+                
                     </div>
                 </div>
             </div>
@@ -454,109 +447,109 @@
             <div class="search-panel-header">
                 <h3>Crypto Search</h3>
                 <button class="close-btn" id="closeSearch">✕</button>
-            </div>
-            <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
-            <div class="search-results" id="searchResults">
-                <div class="search-result-item">Start typing to search...</div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <div class="footer-item">
-                    <span class="footer-label">Connection</span>
-                    <span class="footer-value" id="footerConnection">Active</span>
-                </div>
-                <div class="footer-item">
-                    <span class="footer-label">Latency</span>
-                    <span class="footer-value" id="latency">--ms</span>
-                </div>
-                <div class="footer-item">
-                    <span class="footer-label">Data Points</span>
-                    <span class="footer-value" id="dataPoints">0</span>
-                </div>
-                <div class="footer-item" id="footerLivePriceBox" style="display:none;">
-                    <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
-                </div>
-            </div>
-        </footer>
-
-        <!-- Copyright Footer -->
-        <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
-            <!-- Top Grid Section -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
-                <!-- Domains & Technologies -->
-                <div>
-                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                        Domains & Technologies
-                    </h4>
-                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">FinTech & Crypto Markets</span>
-                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Data Analytics & Visualization</span>
-                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Real-Time WebSocket Streaming</span>
-                        <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Flat icon | JsPdf | JSRE</span>
+                    </div>
+                    <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
+                    <div class="search-results" id="searchResults">
+                        <div class="search-result-item">Start typing to search...</div>
                     </div>
                 </div>
-                <!-- Status -->
-                <div>
-                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                        Status
-                    </h4>
-                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                        <div style="font-size: var(--font-size-sm);">
-                            Proxy:
-                            <a href="https://crypto-ai-proxy.ajithramesh2020.workers.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-success); font-weight: var(--font-weight-bold); text-decoration: none;">
-                                <span id="footerStatus">Cloudflare</span>
-                            </a>
+
+                <!-- Footer -->
+                <footer class="footer">
+                    <div class="footer-content">
+                        <div class="footer-item">
+                            <span class="footer-label">Connection</span>
+                            <span class="footer-value" id="footerConnection">Active</span>
+                        </div>
+                        <div class="footer-item">
+                            <span class="footer-label">Latency</span>
+                            <span class="footer-value" id="latency">--ms</span>
+                        </div>
+                        <div class="footer-item">
+                            <span class="footer-label">Data Points</span>
+                            <span class="footer-value" id="dataPoints">0</span>
+                        </div>
+                        <div class="footer-item" id="footerLivePriceBox" style="display:none;">
+                            <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
+                        </div>
+                    </div>
+                </footer>
+
+                <!-- Copyright Footer -->
+                <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
+                    <!-- Top Grid Section -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
+                        <!-- Domains & Technologies -->
+                        <div>
+                            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                                Domains & Technologies
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">FinTech & Crypto Markets</span>
+                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Data Analytics & Visualization</span>
+                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Real-Time WebSocket Streaming</span>
+                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Flat icon | JsPdf | JSRE</span>
+                            </div>
+                        </div>
+                        <!-- Status -->
+                        <div>
+                            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                                Status
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                                <div style="font-size: var(--font-size-sm);">
+                                    Proxy:
+                                    <a href="https://crypto-ai-proxy.ajithramesh2020.workers.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-success); font-weight: var(--font-weight-bold); text-decoration: none;">
+                                        <span id="footerStatus">Cloudflare</span>
+                                    </a>
+                                </div>
+
+                                <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
+                                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
+                                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
+
+                            </div>
+                        </div>
+                        <!-- APIs -->
+                        <div>
+                            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                                APIs
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                                <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
+                                <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
+                                <a href="https://www.exchangerate-api.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Exchange Rate</a>
+                                <a href="https://www.huggingfaceapi.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">HuggingFace</a>
+                            </div>
                         </div>
 
-                        <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
-                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
-                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
 
                     </div>
-                </div>
-                <!-- APIs -->
-                <div>
-                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                        APIs
-                    </h4>
-                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                        <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
-                        <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
-                        <a href="https://www.exchangerate-api.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Exchange Rate</a>
-                        <a href="https://www.huggingfaceapi.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">HuggingFace</a>
-                    </div>
-                </div>
 
-
-            </div>
-
-            <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
-                <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
+                    <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
+                        <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
                 © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
             </a>
-            </div>
-        </footer>
+                    </div>
+                </footer>
 
-        <!-- JSON Decision Modal (required for JSRE) -->
-        <div id="jsonDecisionModal" class="json-modal" style="display: none;">
-            <div class="json-modal-backdrop"></div>
-            <div class="json-modal-window">
-                <h2 id="jsonModalTitle"></h2>
-                <p id="jsonModalDesc"></p>
-                <div id="jsonModalTimer" class="json-modal-timer"></div>
-                <div class="json-modal-actions">
-                    <button id="jsonPrimaryBtn" class="primary-btn"></button>
-                    <button id="jsonSecondaryBtn" class="secondary-btn"></button>
+                <!-- JSON Decision Modal (required for JSRE) -->
+                <div id="jsonDecisionModal" class="json-modal" style="display: none;">
+                    <div class="json-modal-backdrop"></div>
+                    <div class="json-modal-window">
+                        <h2 id="jsonModalTitle"></h2>
+                        <p id="jsonModalDesc"></p>
+                        <div id="jsonModalTimer" class="json-modal-timer"></div>
+                        <div class="json-modal-actions">
+                            <button id="jsonPrimaryBtn" class="primary-btn"></button>
+                            <button id="jsonSecondaryBtn" class="secondary-btn"></button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        <!-- JSRE Restore Overlay -->
-        <div id="jsreOverlay" class="jsre-overlay hidden">
-            <div class="jsre-card">
-                <svg class="jsre-ring" width="180" height="180">
+                <!-- JSRE Restore Overlay -->
+                <div id="jsreOverlay" class="jsre-overlay hidden">
+                    <div class="jsre-card">
+                        <svg class="jsre-ring" width="180" height="180">
       <circle
         cx="90"
         cy="90"
@@ -579,12 +572,12 @@
       />
     </svg>
 
-                <h2 id="jsreTitle">JSON State Restore Engine</h2>
-                <p id="jsreSubtitle">Initializing…</p>
-            </div>
-        </div>
+                        <h2 id="jsreTitle">JSON State Restore Engine</h2>
+                        <p id="jsreSubtitle">Initializing…</p>
+                    </div>
+                </div>
 
-        <script src="app.js"></script>
+                <script src="app.js"></script>
 </body>
 
 </html>
