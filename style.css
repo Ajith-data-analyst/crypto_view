@@ -1481,6 +1481,251 @@ body {
     /* makes black icon white */
 }
 
+.restore-fab {
+    background: var(--color-error);
+    /* solid red */
+    border: 1px solid var(--color-error);
+    color: #ffffff;
+    /* white icon/text */
+}
+
+.restore-fab .fab-icon {
+    color: #ffffff;
+    /* ensure icon stays white */
+}
+
+.restore-fab:hover {
+    background: var(--color-red-400);
+    /* lighter red on hover */
+}
+
+#jsonModalTitle {
+    color: var(--color-teal-800);
+}
+
+
+/* ================================
+   FAB AUTO-OPEN MODE
+   ================================ */
+
+.fab-stack.auto-open .fab.child {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+
+/* Respect reduced motion */
+
+@media (prefers-reduced-motion: reduce) {
+    .fab-stack.auto-open .fab.child {
+        transition: none !important;
+    }
+}
+
+
+/* JSRE Overlay */
+
+.jsre-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.jsre-overlay.hidden {
+    display: none;
+}
+
+.jsre-card {
+    background: var(--color-surface);
+    padding: 32px;
+    border-radius: 16px;
+    text-align: center;
+    width: 320px;
+    box-shadow: var(--shadow-lg);
+}
+
+.jsre-ring {
+    margin-bottom: 20px;
+    transform: rotate(-90deg);
+}
+
+#jsreTitle {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+#jsreSubtitle {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+
+/* Smooth progress animation */
+
+#jsreProgress {
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease;
+}
+
+
+/* Error animation */
+
+.jsre-error {
+    animation: jsreShake 0.4s ease-in-out 2;
+}
+
+@keyframes jsreShake {
+    0% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-6px);
+    }
+    50% {
+        transform: translateX(6px);
+    }
+    75% {
+        transform: translateX(-4px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+
+
+/* AI Summary Badges */
+
+.ai-badge {
+    padding: 6px 12px;
+    background: var(--color-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.ai-badge:hover {
+    background: var(--color-secondary-hover);
+    transform: translateY(-1px);
+}
+
+
+/* AI Buttons */
+
+.ai-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background: var(--color-secondary);
+    color: var(--color-text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all var(--duration-fast) var(--ease-standard);
+    font-family: var(--font-family-base);
+}
+
+.ai-btn:hover {
+    background: var(--color-secondary-hover);
+    transform: translateY(-1px);
+}
+
+.ai-btn.primary {
+    background: var(--color-primary);
+    color: var(--color-btn-primary-text);
+    border-color: var(--color-primary);
+}
+
+.ai-btn.primary:hover {
+    background: var(--color-primary-hover);
+}
+
+
+/* Mobile adjustments for AI panel */
+
+@media (max-width: 768px) {
+    #aiSummaryWindow {
+        width: 90% !important;
+        min-width: 300px !important;
+        max-height: 80vh;
+        top: 10% !important;
+    }
+    .ai-badge {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+    .ai-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+
+/* All existing CSS remains exactly the same */
+
+
+/* Only adding responsive media query for AI panel at the end */
+
+
+/* AI Summary Panel Responsiveness */
+
+@media (max-width: 768px) {
+    #aiSummaryWindow {
+        width: 90vw !important;
+        max-width: 90vw !important;
+        min-width: 280px !important;
+        max-height: 80vh !important;
+        top: 5vh !important;
+        left: 5vw !important;
+        transform: none !important;
+        position: fixed !important;
+    }
+    #aiSummaryHeader {
+        padding: 12px !important;
+    }
+    #aiSummaryText {
+        font-size: 13px !important;
+        line-height: 1.5 !important;
+    }
+    .ai-badge {
+        font-size: 11px !important;
+        padding: 5px 8px !important;
+    }
+    .ai-btn {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+}
+
+
+/* Touch-friendly drag handle */
+
+#aiSummaryHeader {
+    cursor: move;
+    touch-action: none;
+    /* Prevent browser touch actions */
+}
+
+
+/* Prevent text selection while dragging */
+
+.dragging {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
 
 /* Mobile adjustments */
 

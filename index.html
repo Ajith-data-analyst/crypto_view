@@ -26,13 +26,7 @@
                 </div>
             </div>
         </div>
-        <div id="restoreModeIndicator" style="display: none;" class="panel">
-            <div class="anomaly-item status--warning">
 
-                <span class="anomaly-text" id="restoreModeText">RESTORED FROM SNAPSHOT — LIVE DATA DISABLED</span>
-                <button id="exitRestoreModeBtn" style="margin-left: auto; padding: 4px 12px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-base); cursor: pointer; font-size: var(--font-size-sm);">Exit Restore Mode</button>
-            </div>
-        </div>
     </header>
     <div class="footer-wrap"></div>
 
@@ -289,6 +283,11 @@
         <span class="fab-icon">₹ / $</span>
         <span class="fab-tooltip">Toggle price display between INR and USDT</span>
     </button>
+            <!-- Exit Restore Mode (JSRE only) -->
+            <button class="fab child restore-fab" id="restoreFabBtn" aria-label="Exit Restore Mode" style="display:none;">
+    <span class="fab-icon">⏎</span>
+    <span class="fab-tooltip">Exit Restore Mode</span>
+</button>
 
             <button class="fab main" aria-label="Actions">
   <span class="fab-icon">
@@ -302,7 +301,6 @@
 
 
         <div id="aiSummaryPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;">
-
             <div id="aiSummaryWindow" style="
         width:520px;
         max-width:90vw;
@@ -317,6 +315,8 @@
         transform:translateX(-50%);
         resize:both;
         overflow:auto;
+        display:flex;
+        flex-direction:column;
        ">
 
                 <!-- HEADER (DRAG HANDLE) -->
@@ -324,53 +324,121 @@
           display:flex;
           align-items:center;
           justify-content:space-between;
-          padding:12px 16px;
+          padding:16px;
           border-bottom:1px solid var(--color-border);
           cursor:move;
+          background:var(--color-surface);
+          border-radius:14px 14px 0 0;
          ">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <span class="fab-icon2">
-    <img src="artificial-intelligence.png" alt="AI Summary">
-  </span>
-                        <strong>AI Market Summary</strong>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="
+                  width:36px;
+                  height:36px;
+                  border-radius:10px;
+                  background:var(--color-primary);
+                  display:flex;
+                  align-items:center;
+                  justify-content:center;
+                  color:white;
+                  font-size:18px;
+                ">
+                            🤖
+                        </div>
+                        <div>
+                            <div style="font-weight:600;color:var(--color-text);">AI Market Summary</div>
+                            <div style="font-size:12px;color:var(--color-text-secondary);" id="aiSummaryTimestamp"></div>
+                        </div>
                     </div>
-                    <button onclick="closeAISummary()" style="background:none;border:none;font-size:16px;cursor:pointer;">
-        ✕
-      </button>
+                    <button onclick="closeAISummary()" style="
+                background:var(--color-secondary);
+                border:none;
+                width:32px;
+                height:32px;
+                border-radius:8px;
+                cursor:pointer;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                color:var(--color-text);
+                transition:background var(--duration-fast) var(--ease-standard);
+            ">
+                ✕
+            </button>
                 </div>
 
-                <!-- CONTENT -->
-                <div style="padding:16px;">
-                    <p id="aiSummaryText" style="
-          line-height:1.6;
-          font-size:14px;
-          color:var(--color-text);
-          margin-bottom:12px;
-         ">
-                        Generating AI summary…
-                    </p>
-
-                    <!-- STATUS -->
-                    <div id="aiSummaryStatus" style="
-            font-size:12px;
-            color:var(--color-text-secondary);
-            margin-bottom:12px;
-           ">
-                        Source: Snapshot-Based AI Analysis
+                <!-- CONTENT BODY -->
+                <div style="padding:20px;flex:1;overflow-y:auto;">
+                    <!-- DATA BADGES -->
+                    <div style="
+                display:flex;
+                flex-wrap:wrap;
+                gap:8px;
+                margin-bottom:20px;
+                padding-bottom:16px;
+                border-bottom:1px solid var(--color-border);
+            ">
+                        <div class="ai-badge" id="aiBadgeAsset"></div>
+                        <div class="ai-badge" id="aiBadgeChange"></div>
+                        <div class="ai-badge" id="aiBadgeQuality"></div>
+                        <div class="ai-badge" id="aiBadgeSource"></div>
                     </div>
 
-                    <!-- ACTION BAR -->
+                    <!-- AI RESPONSE TEXT -->
+                    <div style="margin-bottom:24px;">
+                        <p id="aiSummaryText" style="
+                    line-height:1.6;
+                    font-size:14px;
+                    color:var(--color-text);
+                    margin:0;
+                    white-space:pre-wrap;
+                    font-family:var(--font-family-base);
+                ">
+                            Generating AI summary…
+                        </p>
+                    </div>
+
+                    <!-- STATUS FOOTER -->
                     <div style="
+                font-size:12px;
+                color:var(--color-text-secondary);
+                display:flex;
+                align-items:center;
+                gap:8px;
+                padding:12px;
+                background:var(--color-secondary);
+                border-radius:8px;
+                margin-bottom:16px;
+            ">
+                        <span>🔍</span>
+                        <span>Snapshot-Based AI Analysis • Powered by HuggingFace</span>
+                    </div>
+                </div>
+
+                <!-- ACTION BAR -->
+                <div style="
+            padding:16px 20px;
+            border-top:1px solid var(--color-border);
+            background:var(--color-surface);
+            border-radius:0 0 14px 14px;
             display:flex;
             flex-wrap:wrap;
-            gap:8px;
+            gap:10px;
             justify-content:flex-end;
-           ">
-
-                        <button onclick="copyAISummary()" class="ai-btn">⧉ Copy</button>
-                        <button onclick="shareAISummary()" class="ai-btn">⇪ Share</button>
-                        <button onclick="downloadAISummary()" class="ai-btn">⇩ Download</button>
-
+            align-items:center;
+        ">
+                    <div style="flex:1; font-size:12px; color:var(--color-text-secondary);">
+                        📄 For analytics only. Not financial advice.
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="copyAISummary()" class="ai-btn primary">
+                    <span>⧉</span> Copy
+                </button>
+                        <button onclick="downloadAISummary()" class="ai-btn">
+                    <span>⇩</span> Download
+                </button>
+                        <button onclick="shareAISummary()" class="ai-btn ">
+                    <span>⟳</span> Share
+                </button>
                     </div>
                 </div>
             </div>
@@ -485,82 +553,38 @@
                 </div>
             </div>
         </div>
+        <!-- JSRE Restore Overlay -->
+        <div id="jsreOverlay" class="jsre-overlay hidden">
+            <div class="jsre-card">
+                <svg class="jsre-ring" width="180" height="180">
+      <circle
+        cx="90"
+        cy="90"
+        r="70"
+        fill="none"
+        stroke="var(--color-border)"
+        stroke-width="10"
+      />
+      <circle
+        id="jsreProgress"
+        cx="90"
+        cy="90"
+        r="70"
+        fill="none"
+        stroke="var(--color-primary)"
+        stroke-width="10"
+        stroke-linecap="round"
+        stroke-dasharray="439.8"
+        stroke-dashoffset="439.8"
+      />
+    </svg>
+
+                <h2 id="jsreTitle">JSON State Restore Engine</h2>
+                <p id="jsreSubtitle">Initializing…</p>
+            </div>
+        </div>
 
         <script src="app.js"></script>
 </body>
-<script>
-    document.getElementById("aiSummaryBtn").onclick = () => {
-        openAISummary("Generating AI summary…");
-    };
-
-    function copyAISummary() {
-        const text = document.getElementById("aiSummaryText").innerText;
-        navigator.clipboard.writeText(text);
-        addAlert("AI summary copied", "success");
-    }
-
-    function shareAISummary() {
-        const text = document.getElementById("aiSummaryText").innerText;
-
-        if (navigator.share) {
-            navigator.share({
-                title: "Crypto View – AI Summary",
-                text: text
-            });
-        } else {
-            addAlert("Share not supported on this browser", "warning");
-        }
-    }
-
-    function downloadAISummary() {
-        const text = document.getElementById("aiSummaryText").innerText;
-        const blob = new Blob([text], {
-            type: "text/plain"
-        });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `crypto-view-ai-summary-${Date.now()}.txt`;
-        a.click();
-
-        URL.revokeObjectURL(url);
-    }
-
-    function regenerateAISummary() {
-        document.getElementById("aiSummaryText").innerText = "Regenerating summary…";
-        generateAISummary();
-    }
-    (function makeAISummaryDraggable() {
-        const panel = document.getElementById("aiSummaryWindow");
-        const header = document.getElementById("aiSummaryHeader");
-
-        let isDragging = false;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        header.addEventListener("mousedown", (e) => {
-            isDragging = true;
-            offsetX = e.clientX - panel.offsetLeft;
-            offsetY = e.clientY - panel.offsetTop;
-            document.body.style.userSelect = "none";
-        });
-
-        document.addEventListener("mousemove", (e) => {
-            if (!isDragging) return;
-            panel.style.margin = "0";
-            panel.style.left = `${e.clientX - offsetX}px`;
-            panel.style.top = `${e.clientY - offsetY}px`;
-            panel.style.position = "absolute";
-        });
-
-        document.addEventListener("mouseup", () => {
-            isDragging = false;
-            document.body.style.userSelect = "";
-        });
-    })();
-    resize: both;
-    overflow: auto;
-</script>
 
 </html>

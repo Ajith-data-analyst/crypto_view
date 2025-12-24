@@ -17,6 +17,32 @@ const state = {
     isRestoreMode: false, // New: Track if we're in restore mode
     restoreSnapshot: null // New: Store the active snapshot in restore mode
 };
+const JSRE = {
+    overlay: null,
+    progress: null,
+    title: null,
+    subtitle: null,
+    circumference: 439.8,
+    phase: 0
+};
+
+// AI Summary Session Management - FIXED
+let aiSummarySession = {
+    snapshot: null,
+    summaryText: "",
+    generatedAt: null,
+    originalSnapshot: null, // Store the original snapshot for regenerate
+    isJSREMode: false
+};
+
+// Drag State for AI Panel - FIXED
+let aiPanelDragState = {
+    isDragging: false,
+    offsetX: 0,
+    offsetY: 0,
+    currentX: 0,
+    currentY: 0
+};
 
 // Cryptocurrency mapping for Binance
 const cryptoMapping = {
@@ -36,6 +62,7 @@ const APP_VERSION = '1.0';
 
 // Initialize application
 function init() {
+    console.log("[APP] Initializing...");
     updateTime();
     setInterval(updateTime, 1000);
     setupCryptoSelector();
@@ -44,6 +71,9 @@ function init() {
     setupImportButton();
     setupSearchPanel();
     setupCurrencyToggle();
+    initJSREOverlay();
+    setupAIPanelDrag(); // Initialize drag functionality
+
 
     // Only connect to live data if not in restore mode
     if (!state.isRestoreMode) {
@@ -171,6 +201,7 @@ let jsonModalTimerId = null;
 let jsonModalCountdownId = null;
 
 function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onSecondary, autoAction, timerFormat }) {
+    console.log("[JSRE] Showing decision modal");
     const modal = document.getElementById("jsonDecisionModal");
     const titleEl = document.getElementById("jsonModalTitle");
     const descEl = document.getElementById("jsonModalDesc");
@@ -190,11 +221,13 @@ function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onS
     secondaryBtn.textContent = secondaryText;
 
     primaryBtn.onclick = () => {
+        console.log("[JSRE] User clicked proceed");
         closeJsonModal();
         onPrimary && onPrimary();
     };
 
     secondaryBtn.onclick = () => {
+        console.log("[JSRE] User clicked cancel");
         closeJsonModal();
         onSecondary && onSecondary();
     };
@@ -207,6 +240,7 @@ function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onS
             `restore in ${timeLeft} seconds` :
             `close's in ${timeLeft} seconds`;
         if (timeLeft <= 0) {
+            console.log("[JSRE] Auto-action triggered");
             closeJsonModal();
             autoAction && autoAction();
         }
@@ -221,59 +255,139 @@ function closeJsonModal() {
 
 // Setup import button for JSON snapshot restoration
 function setupImportButton() {
+    console.log("[JSRE] Setting up import button");
     const importBtn = document.getElementById('importBtn');
     const importFileInput = document.getElementById('importFileInput');
 
-    if (!importBtn || !importFileInput) return;
+    if (!importBtn) {
+        console.error("[JSRE] Import button not found");
+        return;
+    }
+    if (!importFileInput) {
+        console.error("[JSRE] Import file input not found");
+        return;
+    }
 
     importBtn.addEventListener('click', () => {
+        console.log("[JSRE] Import button clicked");
         importFileInput.click();
     });
 
     importFileInput.addEventListener('change', (e) => {
+        console.log("[JSRE] File selected");
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+            console.log("[JSRE] No file selected");
+            return;
+        }
 
+        console.log(`[JSRE] Reading file: ${file.name} (${file.size} bytes)`);
         const reader = new FileReader();
         reader.onload = (event) => {
-            try {
-                const snapshot = JSON.parse(event.target.result);
+            console.log("[JSRE] File read complete");
+            showJSRE();
 
-                if (validateSnapshot(snapshot)) {
-                    showJsonModal({
-                        title: "JSON State Restore Engine",
-                        desc: "the application will display The data in json file ",
-                        primaryText: "Go Now",
-                        secondaryText: "Go Back",
-                        onPrimary: () => restoreFromSnapshot(snapshot),
-                        onSecondary: () => {},
-                        autoAction: () => restoreFromSnapshot(snapshot),
-                        timerFormat: "restore"
-                    });
-                } else {
-                    showJsonModal({
-                        title: "Uploaded Wrong File",
-                        desc: "The selected file does not match the Crypto View Jaon format.",
-                        primaryText: "Reupload",
-                        secondaryText: "Go Back",
-                        onPrimary: () => document.getElementById("importFileInput").click(),
-                        onSecondary: () => {},
-                        autoAction: () => {},
-                        timerFormat: "close"
-                    });
+            // Store timeout IDs so we can clear them on error
+            const timeoutIds = [];
+
+            // Phase 1: Redirecting to restore environment (2-4.5s)
+            timeoutIds.push(setTimeout(() => {
+                advanceJSRE("Redirecting to restore environment");
+            }, 2000));
+
+            // Phase 2: Uploading snapshot file (4.5-7s)
+            timeoutIds.push(setTimeout(() => {
+                advanceJSRE("Uploading snapshot file");
+            }, 4500));
+
+            // Phase 3: Validating snapshot structure (7-9.5s)
+            timeoutIds.push(setTimeout(() => {
+                advanceJSRE("Validating snapshot structure");
+
+                let snapshot;
+                try {
+                    console.log("[JSRE] Parsing JSON...");
+                    snapshot = JSON.parse(event.target.result);
+                    console.log("[JSRE] JSON parsed successfully");
+                } catch (err) {
+                    console.error("[JSRE] JSON parse error:", err.message);
+                    // Clear remaining timeouts for incorrect file
+                    timeoutIds.forEach(id => clearTimeout(id));
+                    jsreError(); // This will show error at 9.5s
+                    return;
                 }
 
-            } catch (error) {
-                console.error('Error parsing JSON snapshot:', error);
-                addAlert('Invalid JSON snapshot file', 'error');
-            }
+                console.log("[JSRE] Validating snapshot structure...");
+                if (!validateSnapshot(snapshot)) {
+                    console.error("[JSRE] Snapshot validation failed");
+                    // Clear remaining timeouts for incorrect file
+                    timeoutIds.forEach(id => clearTimeout(id));
+                    jsreError(); // This will show error at 9.5s
+                    return;
+                }
+
+                console.log("[JSRE] Snapshot validation passed");
+                // Only proceed to Phase 4 if file is correct
+                // Phase 4: Preparing secure restore session (9.5-12s)
+                timeoutIds.push(setTimeout(() => {
+                    advanceJSRE("Preparing secure restore session");
+
+                    // Final delay before showing modal (12-12.5s)
+                    timeoutIds.push(setTimeout(() => {
+                        console.log("[JSRE] Showing restore confirmation modal");
+                        JSRE.overlay.classList.add("hidden");
+                        showJsonModal({
+                            title: "JSON State Restore Engine",
+                            desc: "The application will display the data from the snapshot",
+                            primaryText: "Proceed",
+                            secondaryText: "Cancel",
+                            onPrimary: () => {
+                                console.log("[JSRE] Proceeding with restore");
+                                restoreFromSnapshot(snapshot);
+                            },
+                            onSecondary: () => {
+                                console.log("[JSRE] Restore cancelled by user");
+                            },
+                            timerFormat: "restore",
+                            autoAction: () => {
+                                console.log("[JSRE] Auto-proceeding with restore");
+                                restoreFromSnapshot(snapshot);
+                            }
+                        });
+                    }, 500)); // Small delay after final phase
+
+                }, 2500)); // Phase 4 starts 2500ms after Phase 3
+
+            }, 7000)); // Phase 3 starts at 7000ms (2s + 2.5s + 2.5s)
         };
+
+        reader.onerror = () => {
+            console.error("[JSRE] FileReader error");
+            addAlert("Failed to read file", "error");
+        };
+
         reader.readAsText(file);
 
         // Reset file input
         importFileInput.value = '';
     });
 }
+
+function updateDateTimeFromSnapshot(snapshot) {
+    const el = document.getElementById('currentTime');
+    if (!el) return;
+
+    const snapshotDate = new Date(snapshot.snapshot.metadata.snapshotTime);
+
+    const datePart = snapshotDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const timePart = snapshotDate.toLocaleTimeString('en-US', {
+        hour12: false
+    });
+
+    el.textContent = `${datePart}  | ${timePart}`;
+}
+
+
 // Generate and export based on format
 function generateAndExport(format) {
     try {
@@ -858,12 +972,14 @@ function exportToJSON(snapshot) {
 // Restore application from snapshot
 function restoreFromSnapshot(snapshot) {
     try {
+        console.log("[JSRE] Starting restore process...");
         // Validate snapshot structure
         if (!validateSnapshot(snapshot)) {
             addAlert("Invalid snapshot format", "error");
             return;
         }
 
+        console.log("[JSRE] Snapshot validated, entering restore mode");
         // Enter restore mode
         enterRestoreMode(snapshot);
 
@@ -873,70 +989,112 @@ function restoreFromSnapshot(snapshot) {
         // Update UI
         updateUIFromSnapshot(snapshot);
 
+        console.log("[JSRE] Restore completed successfully");
         addAlert(`Successfully restored snapshot from ${new Date(snapshot.snapshot.metadata.snapshotTime).toLocaleString()}`, "success");
     } catch (error) {
-        console.error('Restore error:', error);
+        console.error('[JSRE] Restore error:', error);
         addAlert("Failed to restore snapshot", "error");
     }
 }
 
 // Validate snapshot structure
 function validateSnapshot(snapshot) {
-    if (!snapshot || !snapshot.version || !snapshot.engine || !snapshot.snapshot) {
+    console.log("[JSRE] Validating snapshot structure...");
+
+    if (!snapshot) {
+        console.error("[JSRE] Snapshot is null or undefined");
+        return false;
+    }
+
+    if (!snapshot.version) {
+        console.error("[JSRE] Missing version field");
+        return false;
+    }
+
+    if (!snapshot.engine) {
+        console.error("[JSRE] Missing engine field");
         return false;
     }
 
     if (snapshot.engine !== "CryptoView-JSRE") {
+        console.error(`[JSRE] Invalid engine: ${snapshot.engine}, expected CryptoView-JSRE`);
         return false;
     }
 
-    if (!snapshot.snapshot.applicationState || !snapshot.snapshot.priceData || !snapshot.snapshot.metadata) {
+    if (!snapshot.snapshot) {
+        console.error("[JSRE] Missing snapshot field");
         return false;
     }
 
+    if (!snapshot.snapshot.applicationState) {
+        console.error("[JSRE] Missing applicationState");
+        return false;
+    }
+
+    if (!snapshot.snapshot.priceData) {
+        console.error("[JSRE] Missing priceData");
+        return false;
+    }
+
+    if (!snapshot.snapshot.metadata) {
+        console.error("[JSRE] Missing metadata");
+        return false;
+    }
+
+    console.log("[JSRE] Snapshot validation passed");
     return true;
 }
 
-// Enter restore mode
 function enterRestoreMode(snapshot) {
+    console.log("[JSRE] Entering restore mode");
     state.isRestoreMode = true;
     state.restoreSnapshot = snapshot;
 
-    // Disable live data connections
     if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        console.log("[JSRE] Closing WebSocket connection");
         state.ws.close();
     }
 
-    // Clear any intervals
+    // Clear all timers
+    console.log("[JSRE] Clearing existing timers");
     const highestId = window.setTimeout(() => {}, 0);
     for (let i = 0; i < highestId; i++) {
         window.clearInterval(i);
     }
 
-    // Show restore mode indicator
+    // 🔹 Show snapshot DATE + TIME in header
+    updateDateTimeFromSnapshot(snapshot);
+
     const indicator = document.getElementById('restoreModeIndicator');
     const restoreText = document.getElementById('restoreModeText');
     const exitBtn = document.getElementById('exitRestoreModeBtn');
 
+    // Show Restore FAB
+    const restoreFab = document.getElementById('restoreFabBtn');
+    if (restoreFab) {
+        restoreFab.style.display = 'flex';
+        restoreFab.onclick = exitRestoreMode;
+    }
+
     if (indicator) {
         indicator.style.display = 'block';
-        const snapshotTime = new Date(snapshot.snapshot.metadata.snapshotTime);
-        if (restoreText) {
-            restoreText.textContent = `RESTORED FROM SNAPSHOT (${snapshotTime.toLocaleString()}) — LIVE DATA DISABLED`;
-        }
 
-        // Setup exit button
+        const snapshotDate = new Date(snapshot.snapshot.metadata.snapshotTime);
+        restoreText.textContent =
+            `RESTORED FROM SNAPSHOT (${snapshotDate.toLocaleString()}) — LIVE DATA DISABLED`;
+
         if (exitBtn) {
             exitBtn.onclick = exitRestoreMode;
         }
     }
 
-    // Update connection status
     updateConnectionStatus('restored');
+    console.log("[JSRE] Restore mode activated");
 }
 
 // Exit restore mode
 function exitRestoreMode() {
+    console.log("[JSRE] Exiting restore mode");
     state.isRestoreMode = false;
     state.restoreSnapshot = null;
 
@@ -946,12 +1104,20 @@ function exitRestoreMode() {
         indicator.style.display = 'none';
     }
 
+    // Hide restore FAB
+    const restoreFab = document.getElementById('restoreFabBtn');
+    if (restoreFab) {
+        restoreFab.style.display = 'none';
+    }
+
     // Reload the page to restart live data
+    console.log("[JSRE] Reloading page to restore live data");
     window.location.reload();
 }
 
 // Apply snapshot data to state
 function applySnapshot(snapshot) {
+    console.log("[JSRE] Applying snapshot data to state");
     // Update application state
     state.currentSymbol = snapshot.snapshot.applicationState.currentSymbol;
     state.currentName = snapshot.snapshot.applicationState.currentName;
@@ -975,10 +1141,13 @@ function applySnapshot(snapshot) {
     // Update data points count
     state.dataPointsCount = snapshot.snapshot.metadata.totalDataPoints || 0;
     state.lastUpdateTime = new Date(snapshot.snapshot.metadata.snapshotTime).getTime();
+
+    console.log(`[JSRE] Applied snapshot for ${state.currentSymbol}`);
 }
 
 // Update UI from snapshot
 function updateUIFromSnapshot(snapshot) {
+    console.log("[JSRE] Updating UI from snapshot");
     // Update theme
     if (snapshot.snapshot.applicationState.theme) {
         state.theme = snapshot.snapshot.applicationState.theme;
@@ -1039,12 +1208,17 @@ function updateUIFromSnapshot(snapshot) {
 
     // Update system health indicators
     updateSystemHealthFromSnapshot(snapshot);
+
+    console.log("[JSRE] UI update complete");
 }
 
 // Update price display from snapshot
 function updatePriceDisplayFromSnapshot(snapshot) {
     const data = snapshot.snapshot.priceData[state.currentSymbol];
-    if (!data) return;
+    if (!data) {
+        console.warn(`[JSRE] No price data for ${state.currentSymbol} in snapshot`);
+        return;
+    }
 
     const priceIconEl = document.getElementById('priceIcon');
     const nameEl = document.getElementById('priceCryptoName');
@@ -1117,7 +1291,10 @@ function updatePriceDisplayFromSnapshot(snapshot) {
 // Update microstructure from snapshot (pre-computed)
 function updateMicrostructureFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
-    if (!analytics) return;
+    if (!analytics) {
+        console.warn(`[JSRE] No derived analytics for ${state.currentSymbol}`);
+        return;
+    }
 
     const ofiValueEl = document.getElementById('ofiValue');
     const ofiBarEl = document.getElementById('ofiBar');
@@ -1248,11 +1425,12 @@ function updateSystemHealthFromSnapshot(snapshot) {
     if (dataPointsEl) dataPointsEl.textContent = snapshot.snapshot.metadata.totalDataPoints;
 
     const footerConnectionEl = document.getElementById('footerConnection');
-    if (footerConnectionEl) footerConnectionEl.textContent = 'Java State Restore Engine';
+    if (footerConnectionEl) footerConnectionEl.textContent = 'JSRE';
 }
 
 // Load a demo snapshot (for testing)
 function loadDemoSnapshot() {
+    console.log("[JSRE] Loading demo snapshot");
     const demoSnapshot = {
         version: "1.0",
         engine: "CryptoView-JSRE",
@@ -2250,13 +2428,14 @@ function formatVolume(volume) {
     return `$${v.toFixed(2)}`;
 }
 // ===============================
-// REAL AI SUMMARY (Hugging Face)
+// REAL AI SUMMARY (Hugging Face) - ENHANCED
 // ===============================
 async function generateRealAISummary(snapshot) {
     const s = snapshot.snapshot;
     const sym = s.applicationState.currentSymbol;
     const d = s.priceData[sym];
 
+    // Enhanced prompt with more context
     const prompt = `
 Summarize this crypto market briefly:
 Asset: ${s.applicationState.currentName} (${sym})
@@ -2265,77 +2444,734 @@ Price: ${d.price}
 24h Volume: ${d.volume24h}
 `;
 
-    const response = await fetch(
-        "https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-        }
-    );
 
-    const result = await response.json();
-    return result[0].summary_text;
+    try {
+        const response = await fetch(
+            "https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`API responded with ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Ensure we get the summary text
+        if (result && result[0] && result[0].summary_text) {
+            return result[0].summary_text;
+        } else {
+            throw new Error("Invalid response format");
+        }
+
+    } catch (error) {
+        console.error("AI generation error:", error);
+        throw error;
+    }
 }
 
 // ===============================
-// CLOSE SUMMARY MODAL
+// CLOSE SUMMARY MODAL - FIXED
 // ===============================
 function closeAISummary() {
     const panel = document.getElementById("aiSummaryPanel");
     if (panel) {
         panel.style.display = "none";
+        // Reset dragging state
+        aiPanelDragState.isDragging = false;
+        document.body.classList.remove('dragging');
+    }
+}
+// ===============================
+// UPDATE AI BADGES FROM SNAPSHOT
+// ===============================
+function updateAIBadges(snapshot) {
+    const s = snapshot.snapshot;
+    const sym = s.applicationState.currentSymbol;
+    const d = s.priceData[sym];
+
+    // Format timestamp
+    const timestamp = new Date(s.metadata.snapshotTime);
+    const timeEl = document.getElementById('aiSummaryTimestamp');
+    if (timeEl) {
+        timeEl.textContent = timestamp.toLocaleString();
+    }
+
+    // Asset badge
+    const assetBadge = document.getElementById('aiBadgeAsset');
+    if (assetBadge) {
+        assetBadge.innerHTML = `
+            <span style="font-weight:bold;color:var(--color-primary);">${sym}</span>
+            <span>${s.applicationState.currentName}</span>
+        `;
+    }
+
+    // Change badge
+    const changeBadge = document.getElementById('aiBadgeChange');
+    if (changeBadge && d) {
+        const change = d.priceChangePercent24h;
+        const color = change >= 0 ? 'var(--color-success)' : 'var(--color-error)';
+        changeBadge.innerHTML = `
+            <span style="color:${color};font-weight:bold;">
+                ${change >= 0 ? '↗' : '↘'} ${Math.abs(change).toFixed(2)}%
+            </span>
+        `;
+    }
+
+    // Quality badge
+    const qualityBadge = document.getElementById('aiBadgeQuality');
+    if (qualityBadge) {
+        const quality = s.metadata.snapshotQuality;
+        const qualityColors = {
+            'FRESH': 'var(--color-success)',
+            'RECENT': 'var(--color-warning)',
+            'STALE': 'var(--color-error)'
+        };
+        qualityBadge.innerHTML = `
+            <span style="color:${qualityColors[quality] || 'var(--color-text)'};font-weight:bold;">
+                ${quality}
+            </span>
+        `;
+    }
+
+    // Source badge
+    const sourceBadge = document.getElementById('aiBadgeSource');
+    if (sourceBadge) {
+        const wsStatus = s.metadata.websocketStatus;
+        const source = wsStatus === 'connected' ? 'WebSocket' : 'REST';
+        sourceBadge.innerHTML = `
+            <span>${source}</span>
+        `;
     }
 }
 
 // ===============================
-// AI SUMMARY BUTTON HANDLER
+// FIXED COPY FUNCTION - WORKS RELIABLY
 // ===============================
-document
-    .getElementById("aiSummaryBtn")
-    .addEventListener("click", async() => {
-        if (state.isRestoreMode) return;
-        const panel = document.getElementById("aiSummaryPanel");
-        const textBox = document.getElementById("aiSummaryText");
+function copyAISummary() {
+    const textElement = document.getElementById("aiSummaryText");
+    if (!textElement) {
+        console.error("AI summary text element not found");
+        return;
+    }
 
-        panel.style.display = "block";
-        textBox.textContent = "AI is generating summary…";
+    const textToCopy = textElement.innerText || textElement.textContent;
+    if (!textToCopy || textToCopy.trim() === "") {
+        console.warn("No text to copy");
+        return;
+    }
 
-        try {
-            const snapshot = generateSnapshot();
-            const summary = await generateRealAISummary(snapshot);
-            textBox.textContent = summary;
-        } catch (err) {
-            textBox.textContent = "AI service unavailable. Try again.";
-            console.error(err);
-        }
-    });
-async function runAISummary() {
-    const textEl = document.getElementById("aiSummaryText");
-    textEl.innerText = "Generating AI summary…";
+    // Try modern clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                // Show subtle feedback without interrupting UI
+                const originalText = textElement.textContent;
+                textElement.textContent = "✓ Copied to clipboard!";
+                setTimeout(() => {
+                    textElement.textContent = originalText;
+                }, 1500);
+            })
+            .catch(err => {
+                console.error("Clipboard API failed:", err);
+                // Fallback to old method
+                fallbackCopy(textToCopy);
+            });
+    } else {
+        // Fallback for older browsers
+        fallbackCopy(textToCopy);
+    }
+}
+
+function fallbackCopy(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    textArea.style.top = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
 
     try {
-        // STRICT: snapshot-based only
-        const snapshot = state.isRestoreMode && state.restoreSnapshot ?
-            state.restoreSnapshot :
-            generateSnapshot();
-
-        // TEMP logic (replace later with real AI)
-        const summary = `
-Asset: ${snapshot.snapshot.applicationState.currentName}
-Price: ${snapshot.snapshot.priceData[snapshot.snapshot.applicationState.currentSymbol].price}
-24h Change: ${snapshot.snapshot.priceData[snapshot.snapshot.applicationState.currentSymbol].priceChangePercent24h.toFixed(2)}%
-Snapshot Quality: ${snapshot.snapshot.metadata.snapshotQuality}
-WebSocket: ${snapshot.snapshot.metadata.websocketStatus}
-`;
-
-        textEl.innerText = summary;
-
+        const successful = document.execCommand('copy');
+        if (successful) {
+            const textElement = document.getElementById("aiSummaryText");
+            const originalText = textElement.textContent;
+            textElement.textContent = "✓ Copied to clipboard!";
+            setTimeout(() => {
+                textElement.textContent = originalText;
+            }, 1500);
+        }
     } catch (err) {
-        console.error(err);
-        textEl.innerText = "Failed to generate AI summary.";
+        console.error("Fallback copy failed:", err);
+    }
+
+    document.body.removeChild(textArea);
+}
+
+// ===============================
+// FIXED DOWNLOAD FUNCTION - WORKS RELIABLY
+// ===============================
+function downloadAISummary() {
+    const textElement = document.getElementById("aiSummaryText");
+    if (!textElement) {
+        console.error("AI summary text element not found");
+        return;
+    }
+
+    const textToDownload = textElement.innerText || textElement.textContent;
+    if (!textToDownload || textToDownload.trim() === "") {
+        console.warn("No text to download");
+        return;
+    }
+
+    try {
+        // Create blob with proper MIME type
+        const blob = new Blob([textToDownload], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        // Create filename with timestamp
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        const filename = `crypto-view-ai-summary-${timestamp}.txt`;
+
+        // Create and trigger download link
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        // Cleanup
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+
+        // Show subtle feedback
+        const originalText = textElement.textContent;
+        textElement.textContent = "✓ Downloaded!";
+        setTimeout(() => {
+            textElement.textContent = originalText;
+        }, 1500);
+
+    } catch (error) {
+        console.error("Download failed:", error);
+    }
+}
+// ===============================
+// SHARE AI SUMMARY FUNCTION
+// ===============================
+function shareAISummary() {
+    const textElement = document.getElementById("aiSummaryText");
+    if (!textElement) {
+        console.error("AI summary text element not found");
+        return;
+    }
+
+    const textToShare = textElement.innerText || textElement.textContent;
+    if (!textToShare || textToShare.trim() === "") {
+        console.warn("No text to share");
+        return;
+    }
+
+    // Create share data
+    const shareData = {
+        title: "Crypto View AI Summary",
+        text: textToShare,
+        url: window.location.href
+    };
+
+    // Try Web Share API first (mobile/desktop with share support)
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        navigator.share(shareData)
+            .then(() => {
+                // Show subtle feedback
+                const originalText = textElement.textContent;
+                textElement.textContent = "✓ Shared successfully!";
+                setTimeout(() => {
+                    textElement.textContent = originalText;
+                }, 1500);
+            })
+            .catch(err => {
+                console.log("Share cancelled or failed:", err);
+                // Fallback to clipboard
+                fallbackShare(textToShare, textElement);
+            });
+    } else {
+        // Fallback for browsers without Web Share API
+        fallbackShare(textToShare, textElement);
     }
 }
 
+function fallbackShare(text, textElement) {
+    // Try to copy to clipboard first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                const originalText = textElement.textContent;
+                textElement.textContent = "✓ Copied to clipboard! Use Ctrl+V to share.";
+                setTimeout(() => {
+                    textElement.textContent = originalText;
+                }, 2000);
+                addAlert("Summary copied to clipboard - paste it anywhere to share", "success");
+            })
+            .catch(err => {
+                console.error("Clipboard failed:", err);
+                // Last resort: show text in alert
+                const originalText = textElement.textContent;
+                textElement.textContent = "Select and copy text below to share:";
+                setTimeout(() => {
+                    textElement.textContent = originalText;
+                }, 3000);
+                alert("Select and copy the text below to share:\n\n" + text);
+            });
+    } else {
+        // Show text directly
+        const originalText = textElement.textContent;
+        textElement.textContent = "Select and copy text below to share:";
+        setTimeout(() => {
+            textElement.textContent = originalText;
+        }, 3000);
+        alert("Select and copy the text below to share:\n\n" + text);
+    }
+}
+// ===============================
+// FIXED REGENERATE FUNCTION - USES ORIGINAL SNAPSHOT
+// ===============================
+async function regenerateAISummary() {
+    const textBox = document.getElementById("aiSummaryText");
+    const timestampEl = document.getElementById("aiSummaryTimestamp");
+
+    if (!textBox || !timestampEl) {
+        console.error("AI summary elements not found");
+        return;
+    }
+
+    // Store original text for restoration in case of error
+    const originalText = textBox.textContent;
+
+    // Show regenerating state
+    textBox.textContent = "🔄 Regenerating AI summary from snapshot...";
+    timestampEl.textContent = "Regenerating...";
+
+    try {
+        // Use the original snapshot from the session, NOT a new one
+        const snapshot = aiSummarySession.originalSnapshot;
+
+        if (!snapshot) {
+            throw new Error("No original snapshot available for regeneration");
+        }
+
+        // Update badges with the original snapshot data
+        updateAIBadges(snapshot);
+
+        // Generate AI summary using the ORIGINAL snapshot
+        const summary = await generateRealAISummary(snapshot);
+
+        // Format and display
+        const formattedSummary = summary
+            .replace(/\n\s*\n/g, '\n\n')
+            .trim();
+
+        textBox.textContent = formattedSummary;
+
+        // Update session with regenerated text
+        aiSummarySession.summaryText = formattedSummary;
+        aiSummarySession.generatedAt = new Date();
+
+        // Update timestamp
+        timestampEl.textContent = `Regenerated: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+
+        // Show success alert
+        addAlert("AI summary regenerated from snapshot", "success");
+
+    } catch (error) {
+        console.error("Regeneration error:", error);
+
+        // Restore original text
+        textBox.textContent = originalText;
+        timestampEl.textContent = "Regeneration failed";
+
+        // Show error alert
+        addAlert("Failed to regenerate AI summary", "error");
+    }
+}
+
+// ===============================
+// FIXED AI SUMMARY PANEL DRAG - WORKS ON MOBILE & DESKTOP
+// ===============================
+function setupAIPanelDrag() {
+    const panel = document.getElementById("aiSummaryWindow");
+    const header = document.getElementById("aiSummaryHeader");
+
+    if (!panel || !header) {
+        console.warn("AI summary panel elements not found for drag setup");
+        return;
+    }
+
+    // Store initial position for bounds checking
+    const panelRect = panel.getBoundingClientRect();
+    aiPanelDragState.currentX = panelRect.left;
+    aiPanelDragState.currentY = panelRect.top;
+
+    // Mouse events for desktop
+    header.addEventListener("mousedown", startDrag);
+
+    // Touch events for mobile
+    header.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            const touch = e.touches[0];
+            startDrag({
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                preventDefault: () => e.preventDefault()
+            });
+        }
+    }, { passive: false });
+
+    function startDrag(e) {
+        e.preventDefault();
+        aiPanelDragState.isDragging = true;
+
+        // Get current panel position
+        const panelRect = panel.getBoundingClientRect();
+        aiPanelDragState.offsetX = e.clientX - panelRect.left;
+        aiPanelDragState.offsetY = e.clientY - panelRect.top;
+
+        // Prevent text selection during drag
+        document.body.classList.add('dragging');
+
+        // Add event listeners for move and end
+        document.addEventListener("mousemove", handleDragMove);
+        document.addEventListener("touchmove", handleTouchMove, { passive: false });
+        document.addEventListener("mouseup", stopDrag);
+        document.addEventListener("touchend", stopDrag);
+    }
+
+    function handleDragMove(e) {
+        if (!aiPanelDragState.isDragging) return;
+        e.preventDefault();
+        updatePanelPosition(e.clientX, e.clientY);
+    }
+
+    function handleTouchMove(e) {
+        if (!aiPanelDragState.isDragging || e.touches.length !== 1) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        updatePanelPosition(touch.clientX, touch.clientY);
+    }
+
+    function updatePanelPosition(clientX, clientY) {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const panelWidth = panel.offsetWidth;
+        const panelHeight = panel.offsetHeight;
+
+        // Calculate new position
+        let newX = clientX - aiPanelDragState.offsetX;
+        let newY = clientY - aiPanelDragState.offsetY;
+
+        // Keep panel within viewport bounds
+        newX = Math.max(0, Math.min(newX, viewportWidth - panelWidth));
+        newY = Math.max(0, Math.min(newY, viewportHeight - panelHeight));
+
+        // Apply new position
+        panel.style.left = `${newX}px`;
+        panel.style.top = `${newY}px`;
+        panel.style.transform = "none"; // Remove center transform
+
+        // Store current position
+        aiPanelDragState.currentX = newX;
+        aiPanelDragState.currentY = newY;
+    }
+
+    function stopDrag() {
+        aiPanelDragState.isDragging = false;
+        document.body.classList.remove('dragging');
+
+        // Remove event listeners
+        document.removeEventListener("mousemove", handleDragMove);
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("mouseup", stopDrag);
+        document.removeEventListener("touchend", stopDrag);
+    }
+}
+
+// ===============================
+// ENHANCED AI SUMMARY BUTTON HANDLER - FIXED FOR JSRE
+// ===============================
+document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
+    const panel = document.getElementById("aiSummaryPanel");
+    const textBox = document.getElementById("aiSummaryText");
+    const timestampEl = document.getElementById("aiSummaryTimestamp");
+
+    if (!panel || !textBox) {
+        console.error("AI summary panel elements not found");
+        return;
+    }
+
+    // Show loading state
+    panel.style.display = "block";
+    textBox.textContent = "Analyzing market data and generating insights...";
+    if (timestampEl) {
+        timestampEl.textContent = "Generating...";
+    }
+
+    try {
+        // Determine which snapshot to use
+        let snapshot;
+        if (state.isRestoreMode && state.restoreSnapshot) {
+            // JSRE MODE: Use restored snapshot
+            snapshot = state.restoreSnapshot;
+            aiSummarySession.isJSREMode = true;
+            console.log("[AI] Using JSRE restored snapshot");
+        } else {
+            // LIVE MODE: Generate new snapshot
+            snapshot = generateSnapshot();
+            aiSummarySession.isJSREMode = false;
+            console.log("[AI] Using live snapshot");
+        }
+
+        // Store the ORIGINAL snapshot for regeneration
+        aiSummarySession.originalSnapshot = JSON.parse(JSON.stringify(snapshot)); // Deep clone
+        aiSummarySession.generatedAt = new Date();
+
+        // Update badges immediately
+        updateAIBadges(snapshot);
+
+        // Generate AI summary
+        const summary = await generateRealAISummary(snapshot);
+
+        // Format the summary with better spacing
+        const formattedSummary = summary
+            .replace(/\n\s*\n/g, '\n\n')
+            .trim();
+
+        // Update UI
+        textBox.textContent = formattedSummary;
+        aiSummarySession.summaryText = formattedSummary;
+
+        // Update timestamp
+        if (timestampEl) {
+            const timestamp = aiSummarySession.generatedAt;
+            timestampEl.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Log success
+        console.log("[AI] Summary generated successfully");
+
+    } catch (err) {
+        console.error("AI summary error:", err);
+        textBox.textContent = "⚠️ AI service is currently unavailable. Please try again later.\n\nYou can still view the snapshot data in the badges above.";
+
+        // Show snapshot data as fallback
+        try {
+            const snapshot = state.isRestoreMode && state.restoreSnapshot ?
+                state.restoreSnapshot :
+                generateSnapshot();
+            updateAIBadges(snapshot);
+            aiSummarySession.originalSnapshot = snapshot;
+        } catch (e) {
+            console.error("Fallback data failed:", e);
+        }
+    }
+});
+
+// =======================================
+// FAB AUTO DISCOVERY CONTROLLER (PHASED)
+// =======================================
+
+(function setupFabAutoDiscovery() {
+    const fabStack = document.querySelector('.fab-stack');
+    const mainFab = document.querySelector('.fab.main');
+
+    if (!fabStack || !mainFab) return;
+
+    let autoLoopActive = true;
+    let timers = [];
+
+    function openFab() {
+        fabStack.classList.add('auto-open');
+    }
+
+    function closeFab() {
+        fabStack.classList.remove('auto-open');
+    }
+
+    function clearAllTimers() {
+        timers.forEach(t => clearTimeout(t));
+        timers = [];
+    }
+
+    function stopAutoLoop() {
+        if (!autoLoopActive) return;
+
+        autoLoopActive = false;
+        clearAllTimers();
+        closeFab();
+    }
+
+    function schedule(delay, fn) {
+        const t = setTimeout(() => {
+            if (autoLoopActive) fn();
+        }, delay);
+        timers.push(t);
+    }
+
+    /* -----------------------------------
+       PHASE 1: 0–10s (Always visible)
+    ----------------------------------- */
+    openFab();
+    schedule(10000, closeFab);
+
+    /* -----------------------------------
+       PHASE 2: 11–25s (Every 5s)
+    ----------------------------------- */
+    for (let t = 10000; t <= 20000; t += 5000) {
+        schedule(t, () => {
+            openFab();
+            schedule(2000, closeFab);
+        });
+    }
+
+    /* -----------------------------------
+       PHASE 3: 26–55s (Every 10s)
+    ----------------------------------- */
+    for (let t = 20000; t <= 65000; t += 15000) {
+        schedule(t, () => {
+            openFab();
+            schedule(2500, closeFab);
+        });
+    }
+
+    /* -----------------------------------
+       FINAL HARD STOP (after 55s)
+    ----------------------------------- */
+    schedule(56000, stopAutoLoop);
+
+    /* -----------------------------------
+       USER INTERACTION OVERRIDES AUTO MODE
+    ----------------------------------- */
+    mainFab.addEventListener('click', stopAutoLoop);
+    fabStack.addEventListener('mouseenter', stopAutoLoop);
+})();
+
+// =======================================
+// JSRE OVERLAY FUNCTIONS (Unchanged)
+// =======================================
+
+function initJSREOverlay() {
+    JSRE.overlay = document.getElementById("jsreOverlay");
+    JSRE.progress = document.getElementById("jsreProgress");
+    JSRE.title = document.getElementById("jsreTitle");
+    JSRE.subtitle = document.getElementById("jsreSubtitle");
+
+    // Ensure elements exist
+    if (!JSRE.overlay || !JSRE.progress || !JSRE.title || !JSRE.subtitle) {
+        console.error("[JSRE] Failed to initialize overlay elements");
+    }
+}
+
+function showJSRE() {
+    console.log("[JSRE] Showing overlay");
+
+    // Ensure overlay is properly initialized
+    if (!JSRE.overlay || !JSRE.progress || !JSRE.title || !JSRE.subtitle) {
+        console.error("[JSRE] Overlay not properly initialized");
+        return;
+    }
+
+    JSRE.phase = 0;
+    JSRE.progress.style.strokeDashoffset = JSRE.circumference;
+    JSRE.progress.style.stroke = "var(--color-primary)";
+
+    // 🔥 CRITICAL FIX: Reset title and subtitle to default values
+    JSRE.title.textContent = "JSON State Restore Engine";
+    JSRE.subtitle.textContent = "Initializing…";
+
+    // Remove any error class if present
+    const card = JSRE.overlay.querySelector(".jsre-card");
+    if (card) {
+        card.classList.remove("jsre-error");
+    }
+
+    JSRE.overlay.classList.remove("hidden");
+}
+
+function advanceJSRE(subtitle) {
+    console.log(`[JSRE] Phase ${JSRE.phase + 1}: ${subtitle}`);
+    JSRE.phase++;
+    if (JSRE.subtitle) {
+        JSRE.subtitle.textContent = subtitle;
+    }
+
+    const offset = JSRE.circumference - (JSRE.circumference / 4) * JSRE.phase;
+    if (JSRE.progress) {
+        JSRE.progress.style.strokeDashoffset = offset;
+    }
+}
+
+function jsreError() {
+    console.error("[JSRE] Validation failed - wrong file detected");
+
+    if (!JSRE.progress || !JSRE.title || !JSRE.subtitle) {
+        console.error("[JSRE] JSRE elements not available for error display");
+        return;
+    }
+
+    // Visual error state
+    JSRE.progress.style.stroke = "var(--color-error)";
+    JSRE.progress.style.strokeDashoffset = 0;
+
+    JSRE.title.textContent = "Wrong File Detected";
+    JSRE.subtitle.textContent = "Please upload a valid Crypto View snapshot";
+
+    const card = JSRE.overlay.querySelector(".jsre-card");
+    if (card) {
+        card.classList.add("jsre-error");
+    }
+
+    // After animation → redirect to modal
+    setTimeout(() => {
+        if (JSRE.overlay) {
+            JSRE.overlay.classList.add("hidden");
+        }
+
+        if (card) {
+            card.classList.remove("jsre-error");
+        }
+
+        // 🔥 IMPORTANT: Reset the title and subtitle for next upload
+        if (JSRE.title) {
+            JSRE.title.textContent = "JSON State Restore Engine";
+        }
+        if (JSRE.subtitle) {
+            JSRE.subtitle.textContent = "Initializing…";
+        }
+
+        showJsonModal({
+            title: "Uploaded Wrong File",
+            desc: "The selected file does not match the Crypto View JSON format.",
+            primaryText: "Reupload",
+            secondaryText: "Go Back",
+            onPrimary: () => {
+                console.log("[JSRE] Reupload triggered");
+                document.getElementById("importFileInput").click();
+            },
+            onSecondary: () => {
+                console.log("[JSRE] User chose to go back");
+            },
+            autoAction: () => {},
+            timerFormat: "close"
+        });
+    }, 1200); // allows shake + color settle
+}
 
 // Make selectCrypto global
 window.selectCrypto = selectCrypto;
