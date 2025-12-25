@@ -262,7 +262,7 @@
     </button>
             <!-- Export Data -->
             <button class="fab child" id="exportBtn" aria-label="Export Snapshot">
-        <span class="fab-icon">⭳</span>
+        <span class="fab-icon">⇩</span>
         <span class="fab-tooltip">Export current market snapshot (PDF / JSON)</span>
     </button>
             <div class="export-dropdown" id="exportDropdown">
@@ -341,21 +341,30 @@
                             <div style="font-size:12px;color:var(--color-text-secondary);" id="aiSummaryTimestamp"></div>
                         </div>
                     </div>
-                    <button onclick="closeAISummary()" style="
-                background:var(--color-secondary);
-                border:none;
-                width:32px;
-                height:32px;
-                border-radius:8px;
-                cursor:pointer;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                color:var(--color-text);
-                transition:background var(--duration-fast) var(--ease-standard);
-            ">
-                ✕
-            </button>
+                    <button onclick="
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('aiSummaryPanel').style.display = 'none';
+  " ontouchstart="event.stopPropagation();" ontouchend="
+    event.preventDefault();
+    event.stopPropagation();
+    document.getElementById('aiSummaryPanel').style.display = 'none';
+  " style="
+    background:var(--color-secondary);
+    border:none;
+    width:32px;
+    height:32px;
+    border-radius:8px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--color-text);
+    transition:background var(--duration-fast) var(--ease-standard);
+  ">
+  ✕
+</button>
+
                 </div>
 
                 <!-- CONTENT BODY -->
@@ -482,15 +491,24 @@
                         <!-- Domains & Technologies -->
                         <div>
                             <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                                Domains & Technologies
+                                Brought to you by
                             </h4>
                             <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">FinTech & Crypto Markets</span>
-                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Data Analytics & Visualization</span>
-                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Real-Time WebSocket Streaming</span>
-                                <span style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Flat icon | JsPdf | JSRE</span>
+                                <a href="https://github.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+            GitHub
+        </a>
+                                <a href="https://www.cloudflare.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+            Cloudflare
+        </a>
+                                <a href="https://ajith-data-analyst.github.io/Portfolio/home.html" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+            Ajith Ramesh
+        </a>
+                                <a href="https://www.flaticon.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+            Flaticon
+        </a>
                             </div>
                         </div>
+
                         <!-- Status -->
                         <div>
                             <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
