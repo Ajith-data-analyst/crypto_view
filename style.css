@@ -1758,6 +1758,39 @@ body {
 }
 
 
+/* Add to the existing FAB styles in style.css */
+
+
+/* MAIN FAB ROTATION ON STRETCH (HOVER) */
+
+.fab-stack:hover .fab.main {
+    transform: rotate(90deg);
+    transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+
+/* MAIN FAB ROTATION ON AUTO-OPEN */
+
+.fab-stack.auto-open .fab.main {
+    transform: rotate(90deg);
+    transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+
+/* Smooth rotation back when closed */
+
+.fab-stack .fab.main {
+    transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+
+/* Ensure child buttons have smooth transitions */
+
+.fab.child {
+    transition: transform var(--duration-normal) var(--ease-standard), opacity var(--duration-normal) var(--ease-standard);
+}
+
+
 /* Mobile adjustments */
 
 @media (max-width: 768px) {

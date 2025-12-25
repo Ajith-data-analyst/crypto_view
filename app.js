@@ -2983,9 +2983,8 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     }
 });
 
-// =======================================
-// FAB AUTO DISCOVERY CONTROLLER (PHASED)
-// =======================================
+// Update the setupFabAutoDiscovery function in app.js
+// Replace the existing function with this improved version:
 
 (function setupFabAutoDiscovery() {
     const fabStack = document.querySelector('.fab-stack');
@@ -2996,12 +2995,25 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     let autoLoopActive = true;
     let timers = [];
 
+    function rotateMainFab(rotate = true) {
+        if (rotate) {
+            mainFab.style.transform = 'rotate(90deg)';
+        } else {
+            mainFab.style.transform = 'rotate(0deg)';
+        }
+    }
+
     function openFab() {
         fabStack.classList.add('auto-open');
+        rotateMainFab(true);
     }
 
     function closeFab() {
         fabStack.classList.remove('auto-open');
+        // Only rotate back if not manually hovering
+        if (!fabStack.matches(':hover')) {
+            rotateMainFab(false);
+        }
     }
 
     function clearAllTimers() {
@@ -3023,6 +3035,20 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         }, delay);
         timers.push(t);
     }
+
+    /* -----------------------------------
+       MANUAL HOVER ROTATION
+    ----------------------------------- */
+    fabStack.addEventListener('mouseenter', () => {
+        rotateMainFab(true);
+    });
+
+    fabStack.addEventListener('mouseleave', () => {
+        // Only rotate back if not in auto-open mode
+        if (!fabStack.classList.contains('auto-open')) {
+            rotateMainFab(false);
+        }
+    });
 
     /* -----------------------------------
        PHASE 1: 0–10s (Always visible)
@@ -3058,10 +3084,18 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     /* -----------------------------------
        USER INTERACTION OVERRIDES AUTO MODE
     ----------------------------------- */
-    mainFab.addEventListener('click', stopAutoLoop);
-    fabStack.addEventListener('mouseenter', stopAutoLoop);
+    mainFab.addEventListener('click', () => {
+        stopAutoLoop();
+        // Toggle on click if not in auto mode
+        if (!autoLoopActive) {
+            if (fabStack.classList.contains('auto-open')) {
+                closeFab();
+            } else {
+                openFab();
+            }
+        }
+    });
 })();
-
 // =======================================
 // JSRE OVERLAY FUNCTIONS (Unchanged)
 // =======================================
