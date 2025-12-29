@@ -9,14 +9,9 @@
 
 **Crypto View** is a production-grade cryptocurrency analytics dashboard that delivers institutional-level market intelligence through an intuitive, real-time interface. Built entirely with vanilla web technologies, it combines live market data, advanced microstructure analysis, AI-powered insights, and state restoration capabilities into a single cohesive platform.
 
-[![Live Project](https://img.shields.io/badge/🚀_VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github)](https://ajith-data-analyst.github.io/crypto_view/)
 <p align="center">
   <a href="https://ajith-data-analyst.github.io/crypto_view/">
-    <img
-      src="https://img.shields.io/badge/VIEW%20MY%20LIVE%20PROJECT%20%7C%20DEMO-0A66C2?style=for-the-badge&logo=render&logoColor=white"
-      alt="View My Live Expense Tracker Project (Live Demo)"
-      height="55"
-    />
+    <img src="https://img.shields.io/badge/🚀_VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github"/>
   </a>
 </p>
 
