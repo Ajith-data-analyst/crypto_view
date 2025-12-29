@@ -589,11 +589,15 @@ Crypto View represents the culmination of modern web development practices appli
 
   
 *Built with precision, powered by data, designed for clarity.*  
-<a href="https://github.com/Ajith-data-analyst/expense-tracker/blob/main/LICENSE.txt">
+<a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt">
   *© 2025 Crypto View Project. All rights reserved under MIT License.*
 </a>
 
 </div>
 
 
+
 <p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=footer"/>
+</p>
+
