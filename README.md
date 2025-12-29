@@ -1,4 +1,4 @@
-# 🔥 Crypto View: Institutional-Grade Cryptocurrency Analytics Platform
+# CRYPTO VIEW - REAL TIME INR CRYPTO ANALYTICS  Platform
 
 
 [![GitHub Repository](https://img.shields.io/badge/📂_GITHUB_REPOSITORY-Crypto_View-black?style=for-the-badge&logo=github)](https://github.com/Ajith-data-analyst/crypto_view)
