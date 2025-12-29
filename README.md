@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://ajith-data-analyst.github.io/crypto_view/">
-    <img src="https://img.shields.io/badge/🚀_VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github"/>
+    <img src="https://img.shields.io/badge/VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github"/>
   </a>
 </p>
 
