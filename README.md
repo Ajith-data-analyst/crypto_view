@@ -1,6 +1,6 @@
 # 🔥 Crypto View: Institutional-Grade Cryptocurrency Analytics Platform
 
-[![Live Project](https://img.shields.io/badge/🚀_VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github)](https://ajith-data-analyst.github.io/crypto_view/)
+
 [![GitHub Repository](https://img.shields.io/badge/📂_GITHUB_REPOSITORY-Crypto_View-black?style=for-the-badge&logo=github)](https://github.com/Ajith-data-analyst/crypto_view)
 [![MIT License](https://img.shields.io/badge/📜_License-MIT-green?style=for-the-badge)](https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt)
 [![Built with Web Technologies](https://img.shields.io/badge/🔧_Built_with-HTML/CSS/JS-orange?style=for-the-badge)](https://developer.mozilla.org)
@@ -9,6 +9,7 @@
 
 **Crypto View** is a production-grade cryptocurrency analytics dashboard that delivers institutional-level market intelligence through an intuitive, real-time interface. Built entirely with vanilla web technologies, it combines live market data, advanced microstructure analysis, AI-powered insights, and state restoration capabilities into a single cohesive platform.
 
+[![Live Project](https://img.shields.io/badge/🚀_VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github)](https://ajith-data-analyst.github.io/crypto_view/)
 <p align="center">
   <a href="https://ajith-data-analyst.github.io/crypto_view/">
     <img
@@ -505,51 +506,11 @@ project_metrics:
 
 ---
 
-## 📞 Support & Community
-
-### 🆘 Getting Help
-1. **Documentation**: This README and inline code comments
-2. **GitHub Issues**: [Report bugs or request features](https://github.com/Ajith-data-analyst/crypto_view/issues)
-3. **Email**: Contact through [portfolio](https://ajith-data-analyst.github.io/Portfolio/home.html)
-
-### 💬 Community Channels
-- **GitHub Discussions**: Feature discussions and Q&A
-- **Twitter Updates**: Follow for announcements
-- **Blog Posts**: Technical deep dives on implementation
-
-### 🐛 Bug Reports
-When reporting issues, include:
-```markdown
-## Environment
-- Browser: [e.g., Chrome 98]
-- OS: [e.g., Windows 11]
-- Device: [e.g., Desktop, iPhone 13]
-
-## Steps to Reproduce
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
-
-## Expected Behavior
-Clear description of what should happen
-
-## Actual Behavior
-What actually happens
-
-## Screenshots/Logs
-Console logs, screenshots, or screen recordings
-```
-
----
-
 ## 🎉 Final Notes
 
 Crypto View represents the culmination of modern web development practices applied to financial technology. By combining real-time data processing, AI-powered analysis, and intuitive design, it provides a professional-grade tool that's accessible to everyone.
 
 **Remember**: This tool is for *analytics* and *education* only. Always verify data from multiple sources and never invest more than you can afford to lose.
-
----
 
 ---
 
