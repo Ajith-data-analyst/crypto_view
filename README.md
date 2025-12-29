@@ -5,6 +5,10 @@
 [![MIT License](https://img.shields.io/badge/📜_License-MIT-green?style=for-the-badge)](https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt)
 [![Built with Web Technologies](https://img.shields.io/badge/🔧_Built_with-HTML/CSS/JS-orange?style=for-the-badge)](https://developer.mozilla.org)
 
+## 🎯 Executive Summary
+
+**Crypto View** is a production-grade cryptocurrency analytics dashboard that delivers institutional-level market intelligence through an intuitive, real-time interface. Built entirely with vanilla web technologies, it combines live market data, advanced microstructure analysis, AI-powered insights, and state restoration capabilities into a single cohesive platform.
+
 <p align="center">
   <a href="https://ajith-data-analyst.github.io/crypto_view/">
     <img
@@ -15,10 +19,6 @@
   </a>
 </p>
 
-
-## 🎯 Executive Summary
-
-**Crypto View** is a production-grade cryptocurrency analytics dashboard that delivers institutional-level market intelligence through an intuitive, real-time interface. Built entirely with vanilla web technologies, it combines live market data, advanced microstructure analysis, AI-powered insights, and state restoration capabilities into a single cohesive platform.
 
 ### 🌟 Key Differentiators
 - **No Frameworks, Maximum Performance**: Pure HTML/CSS/JS architecture for optimal speed
