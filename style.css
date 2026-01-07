@@ -1791,49 +1791,6 @@ body {
 }
 
 
-/* ================================
-   MAIN FAB BOUNCE ANIMATION
-   ================================ */
-
-
-/* ===============================
-   MAIN FAB — SAFE BOUNCE
-   =============================== */
-
-.fab-bounce-wrapper {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 999;
-    animation: fab-idle-bounce 0.5s ease-in-out infinite;
-    pointer-events: none;
-}
-
-.fab-bounce-wrapper .fab.main {
-    pointer-events: auto;
-}
-
-@keyframes fab-idle-bounce {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-6px);
-    }
-}
-
-.fab-bounce-wrapper:has(.fab.main.active) {
-    animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .fab-bounce-wrapper {
-        animation: none;
-    }
-}
-
-
 /* Mobile adjustments */
 
 @media (max-width: 768px) {
