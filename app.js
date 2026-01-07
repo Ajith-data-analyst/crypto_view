@@ -2948,14 +2948,16 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         // Generate AI summary
         const summary = await generateRealAISummary(snapshot);
 
-        // Format the summary with better spacing
+        // Format the summary
         const formattedSummary = summary
             .replace(/\n\s*\n/g, '\n\n')
             .trim();
 
-        // Update UI
-        textBox.textContent = formattedSummary;
-        aiSummarySession.summaryText = formattedSummary;
+        // Yield to browser, then animate
+        setTimeout(() => {
+            showTextWordByWord(textBox, formattedSummary);
+        }, 0);
+
 
         // Update timestamp
         if (timestampEl) {
@@ -3205,6 +3207,22 @@ function jsreError() {
             timerFormat: "close"
         });
     }, 1200); // allows shake + color settle
+}
+
+function showTextWordByWord(element, text) {
+    element.textContent = "";
+
+    const words = text.split(" ");
+    let i = 0;
+
+    const interval = setInterval(() => {
+        if (i < words.length) {
+            element.textContent += (i === 0 ? "" : " ") + words[i];
+            i++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 40); // speed (ms)
 }
 
 // Make selectCrypto global
