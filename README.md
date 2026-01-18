@@ -23,6 +23,54 @@
 - **AI-Powered Market Intelligence**: HuggingFace-powered analysis and summaries
 - **Professional Export System**: PDF reports with verification seals and JSON snapshots
 
+### CORE SYSTEM FLOW
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  USER INTERFACE                         │
+│  • 9 Crypto Selectors      • Price Display              │
+│  • Market Metrics          • FAB Action Stack (7)       │
+│  • Search Panel            • AI Summary Panel           │
+└───────────────┬─────────────────────────────┬───────────┘
+                │                             │
+        User Interactions             UI Updates
+                │                             │
+┌───────────────▼─────────────────────────────▼───────────┐
+│               APPLICATION STATE                         │
+│                                                         │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  Live Mode                    Restore Mode      │   │
+│  │  • isRestoreMode = false     • isRestoreMode = true│   │
+│  │  • WebSocket Active          • WebSocket Stopped │   │
+│  │  • Real-time Updates         • Snapshot Data     │   │
+│  │  • Live Timers               • Static Timestamp  │   │
+│  └─────────────────────────────────────────────────┘   │
+└───────────────┬─────────────────────────────┬───────────┘
+                │                             │
+         State Changes                 Data Consumption
+                │                             │
+┌───────────────▼─────────────────────────────▼───────────┐
+│              PROCESSING ENGINE                          │
+│                                                         │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐  │
+│  │ Data Ingestion   │ Analytics       │ JSRE        │  │
+│  │ • WebSocket      │ • Microstructure │ • Snapshot   │  │
+│  │ • REST API       │ • Volatility     │   Generation │  │
+│  │ • Rate Exchange  │ • Risk Scoring   │ • Validation │  │
+│  │                 │ • Anomaly Detect │ • Restoration│  │
+│  └─────────────┘   └─────────────┘   └─────────────┘  │
+└───────────────┬─────────────────────────────┬───────────┘
+                │                             │
+        External Data Fetch            AI Processing
+                │                             │
+┌───────────────▼─────────────────────────────▼───────────┐
+│              EXTERNAL SERVICES                          │
+│  • Binance WebSocket  • Hugging Face AI                 │
+│  • CoinGecko API      • Exchange Rate API               │
+│  • Cloudflare Worker  (AI Proxy)                        │
+└─────────────────────────────────────────────────────────┘
+```
+
 ### CRYPTO VIEW - ARCHITECTURE MAP
 
 ```mermaid
