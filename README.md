@@ -16,7 +16,8 @@ flowchart TB
   end
 
   Streamlit[Streamlit App\nDashboards & Analytics]
-  Backend[Backend / Serverless\nAPI Proxy • AI • Alerts]
+  Cloudflare[Cloudflare[Cloudflare Workers
+API Proxy • AI • Alerts]
   Data[Crypto Market APIs\nREST / WebSocket]
   AI[AI Model Service\n(Hugging Face / LLM)]
   Store[Storage\n(DB + Object Storage)]
@@ -29,22 +30,22 @@ flowchart TB
 
   %% Main application
   User --> UI
-  UI -->|Market data request| Backend
-  Backend --> Data
-  Data --> Backend
-  Backend -->|Live updates| UI
+  UI -->|Market data request| Cloudflare
+  Cloudflare --> Data
+  Data --> Cloudflare
+  Cloudflare -->|Live updates| UI
 
   %% AI summary workflow
-  UI -->|Market snapshot| Backend
-  Backend -->|Secure API call| AI
-  AI --> Backend
-  Backend -->|AI summary| UI
+  UI -->|Market snapshot| Cloudflare
+  Cloudflare -->|Secure API call| AI
+  AI --> Cloudflare
+  Cloudflare -->|AI summary| UI
 
   %% Alerts workflow
-  UI -->|Create alert| Backend
-  Backend --> Store
-  Backend -->|Evaluate conditions| Data
-  Backend -->|Trigger notification| Notify
+  UI -->|Create alert| Cloudflare
+  Cloudflare --> Store
+  Cloudflare -->|Evaluate conditions| Data
+  Cloudflare -->|Trigger notification| Notify
 
   %% Export / Import
   UI -->|Export / Import data| Store
@@ -67,8 +68,8 @@ flowchart TB
 
 * `index.html` loads from static hosting (GitHub Pages / CDN).
 * User interacts with the UI (select crypto, view metrics).
-* UI requests live market data from the Backend.
-* Backend fetches and normalizes data from crypto market APIs.
+* UI requests live market data from the Cloudflare.
+* Cloudflare fetches and normalizes data from crypto market APIs.
 * Live updates are sent back to the UI.
 
 ---
@@ -76,8 +77,8 @@ flowchart TB
 ### 3️⃣ AI Summary Flow
 
 * User clicks **Generate AI Summary**.
-* UI sends a market snapshot to the Backend.
-* Backend securely calls the AI model service.
+* UI sends a market snapshot to the Cloudflare.
+* Cloudflare securely calls the AI model service.
 * AI-generated summary is returned to the UI.
 * User can view or export the summary.
 
@@ -87,7 +88,7 @@ flowchart TB
 
 * User creates price or risk alerts in the UI.
 * Alerts are stored in the database.
-* Backend continuously evaluates alert conditions using live data.
+* Cloudflare continuously evaluates alert conditions using live data.
 * When triggered, notifications are sent via email, SMS, or webhook.
 
 ---
@@ -103,7 +104,7 @@ flowchart TB
 ## 🏗️ Key Design Principles
 
 * **Single-page frontend** hosted statically
-* **Backend as security layer** for API keys and AI calls
+* **Cloudflare as security layer** for API keys and AI calls
 * **Event-driven alerts** using live market data
 * **Separation of concerns** between UI, analytics, AI, and notifications
 * **Scalable & deployment-friendly architecture**
@@ -115,7 +116,7 @@ flowchart TB
 * **Frontend**: HTML, CSS, JavaScript
 * **Wake Logic**: `home.html`
 * **Analytics UI**: Streamlit
-* **Backend**: Serverless / API layer
+* **Cloudflare**: Serverless / API layer
 * **AI**: Hugging Face / LLM APIs
 * **Data**: Crypto exchange APIs
 * **Storage**: Database + Object storage
