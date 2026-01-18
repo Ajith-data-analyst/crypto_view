@@ -1,3 +1,135 @@
+# Crypto View — System Architecture (Single Map)
+
+This README explains **how the entire project works** using **one unified architecture map**.
+
+---
+
+## 🧭 Single Architecture Map
+
+```mermaid
+flowchart TB
+  User[User / Browser]
+
+  subgraph Static[Static Hosting]
+    Home[home.html\nWake & Redirect]
+    UI[index.html\nUI + JS + CSS]
+  end
+
+  Streamlit[Streamlit App\nDashboards & Analytics]
+  Backend[Backend / Serverless\nAPI Proxy • AI • Alerts]
+  Data[Crypto Market APIs\nREST / WebSocket]
+  AI[AI Model Service\n(Hugging Face / LLM)]
+  Store[Storage\n(DB + Object Storage)]
+  Notify[Email / SMS / Webhook]
+
+  %% Entry flow
+  User --> Home
+  Home -->|Health check / postMessage| Streamlit
+  Home -->|Redirect| UI
+
+  %% Main application
+  User --> UI
+  UI -->|Market data request| Backend
+  Backend --> Data
+  Data --> Backend
+  Backend -->|Live updates| UI
+
+  %% AI summary workflow
+  UI -->|Market snapshot| Backend
+  Backend -->|Secure API call| AI
+  AI --> Backend
+  Backend -->|AI summary| UI
+
+  %% Alerts workflow
+  UI -->|Create alert| Backend
+  Backend --> Store
+  Backend -->|Evaluate conditions| Data
+  Backend -->|Trigger notification| Notify
+
+  %% Export / Import
+  UI -->|Export / Import data| Store
+```
+
+---
+
+## 🔄 End-to-End Workflow Explanation
+
+### 1️⃣ Wake & Redirect Flow
+
+* User opens the project link.
+* `home.html` checks whether the Streamlit app is asleep.
+* If asleep, it waits for the app to wake (via health-check or `postMessage`).
+* Once active, the user is redirected to the main UI.
+
+---
+
+### 2️⃣ Main Application Flow
+
+* `index.html` loads from static hosting (GitHub Pages / CDN).
+* User interacts with the UI (select crypto, view metrics).
+* UI requests live market data from the Backend.
+* Backend fetches and normalizes data from crypto market APIs.
+* Live updates are sent back to the UI.
+
+---
+
+### 3️⃣ AI Summary Flow
+
+* User clicks **Generate AI Summary**.
+* UI sends a market snapshot to the Backend.
+* Backend securely calls the AI model service.
+* AI-generated summary is returned to the UI.
+* User can view or export the summary.
+
+---
+
+### 4️⃣ Alerts & Notifications Flow
+
+* User creates price or risk alerts in the UI.
+* Alerts are stored in the database.
+* Backend continuously evaluates alert conditions using live data.
+* When triggered, notifications are sent via email, SMS, or webhook.
+
+---
+
+### 5️⃣ Export & Import Flow
+
+* User exports reports (PDF / JSON) or imports saved configurations.
+* Data is read from or written to storage.
+* Exports can be client-side or backend-generated.
+
+---
+
+## 🏗️ Key Design Principles
+
+* **Single-page frontend** hosted statically
+* **Backend as security layer** for API keys and AI calls
+* **Event-driven alerts** using live market data
+* **Separation of concerns** between UI, analytics, AI, and notifications
+* **Scalable & deployment-friendly architecture**
+
+---
+
+## ✅ Tech Stack Summary
+
+* **Frontend**: HTML, CSS, JavaScript
+* **Wake Logic**: `home.html`
+* **Analytics UI**: Streamlit
+* **Backend**: Serverless / API layer
+* **AI**: Hugging Face / LLM APIs
+* **Data**: Crypto exchange APIs
+* **Storage**: Database + Object storage
+* **Notifications**: Email / SMS / Webhooks
+
+---
+
+## 📌 One-Line Description
+
+> A statically hosted crypto analytics UI with a Streamlit backend, AI-powered summaries, real-time market data, alerting, and export capabilities — all coordinated through a secure backend layer.
+
+
+
+
 # CRYPTO VIEW - REAL TIME INR CRYPTO ANALYTICS PLATFORM
 
 
