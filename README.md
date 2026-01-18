@@ -1,136 +1,3 @@
-# Crypto View — System Architecture (Single Map)
-
-This README explains **how the entire project works** using **one unified architecture map**.
-
----
-
-## 🧭 Single Architecture Map
-
-```mermaid
-flowchart TB
-  User[User / Browser]
-
-  subgraph Static[Static Hosting]
-    Home[home.html\nWake & Redirect]
-    UI[index.html\nUI + JS + CSS]
-  end
-
-  Streamlit[Streamlit App\nDashboards & Analytics]
-  Cloudflare[Cloudflare[Cloudflare Workers
-API Proxy • AI • Alerts]
-  Data[Crypto Market APIs\nREST / WebSocket]
-  AI[AI Model Service\n(Hugging Face / LLM)]
-  Store[Storage\n(DB + Object Storage)]
-  Notify[Email / SMS / Webhook]
-
-  %% Entry flow
-  User --> Home
-  Home -->|Health check / postMessage| Streamlit
-  Home -->|Redirect| UI
-
-  %% Main application
-  User --> UI
-  UI -->|Market data request| Cloudflare
-  Cloudflare --> Data
-  Data --> Cloudflare
-  Cloudflare -->|Live updates| UI
-
-  %% AI summary workflow
-  UI -->|Market snapshot| Cloudflare
-  Cloudflare -->|Secure API call| AI
-  AI --> Cloudflare
-  Cloudflare -->|AI summary| UI
-
-  %% Alerts workflow
-  UI -->|Create alert| Cloudflare
-  Cloudflare --> Store
-  Cloudflare -->|Evaluate conditions| Data
-  Cloudflare -->|Trigger notification| Notify
-
-  %% Export / Import
-  UI -->|Export / Import data| Store
-```
-
----
-
-## 🔄 End-to-End Workflow Explanation
-
-### 1️⃣ Wake & Redirect Flow
-
-* User opens the project link.
-* `home.html` checks whether the Streamlit app is asleep.
-* If asleep, it waits for the app to wake (via health-check or `postMessage`).
-* Once active, the user is redirected to the main UI.
-
----
-
-### 2️⃣ Main Application Flow
-
-* `index.html` loads from static hosting (GitHub Pages / CDN).
-* User interacts with the UI (select crypto, view metrics).
-* UI requests live market data from the Cloudflare.
-* Cloudflare fetches and normalizes data from crypto market APIs.
-* Live updates are sent back to the UI.
-
----
-
-### 3️⃣ AI Summary Flow
-
-* User clicks **Generate AI Summary**.
-* UI sends a market snapshot to the Cloudflare.
-* Cloudflare securely calls the AI model service.
-* AI-generated summary is returned to the UI.
-* User can view or export the summary.
-
----
-
-### 4️⃣ Alerts & Notifications Flow
-
-* User creates price or risk alerts in the UI.
-* Alerts are stored in the database.
-* Cloudflare continuously evaluates alert conditions using live data.
-* When triggered, notifications are sent via email, SMS, or webhook.
-
----
-
-### 5️⃣ Export & Import Flow
-
-* User exports reports (PDF / JSON) or imports saved configurations.
-* Data is read from or written to storage.
-* Exports can be client-side or backend-generated.
-
----
-
-## 🏗️ Key Design Principles
-
-* **Single-page frontend** hosted statically
-* **Cloudflare as security layer** for API keys and AI calls
-* **Event-driven alerts** using live market data
-* **Separation of concerns** between UI, analytics, AI, and notifications
-* **Scalable & deployment-friendly architecture**
-
----
-
-## ✅ Tech Stack Summary
-
-* **Frontend**: HTML, CSS, JavaScript
-* **Wake Logic**: `home.html`
-* **Analytics UI**: Streamlit
-* **Cloudflare**: Serverless / API layer
-* **AI**: Hugging Face / LLM APIs
-* **Data**: Crypto exchange APIs
-* **Storage**: Database + Object storage
-* **Notifications**: Email / SMS / Webhooks
-
----
-
-## 📌 One-Line Description
-
-> A statically hosted crypto analytics UI with a Streamlit backend, AI-powered summaries, real-time market data, alerting, and export capabilities — all coordinated through a secure backend layer.
-
-
-
-
 # CRYPTO VIEW - REAL TIME INR CRYPTO ANALYTICS PLATFORM
 
 
@@ -147,6 +14,158 @@ API Proxy • AI • Alerts]
     <img src="https://img.shields.io/badge/VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github"/>
   </a>
 </p>
+# **CRYPTO VIEW - ARCHITECTURE MAP**
+
+```mermaid
+graph TB
+    %% ========== DATA LAYER ==========
+    subgraph "DATA SOURCES"
+        WS[Binance WebSocket<br/>stream.binance.com]
+        API[CoinGecko REST API<br/>api.coingecko.com]
+        XR[Exchange Rate API<br/>USD→INR]
+        HF[Hugging Face AI<br/>Cloudflare Proxy]
+    end
+    
+    %% ========== CORE ENGINE ==========
+    subgraph "CORE ENGINE"
+        STATE["Global State Object<br/>• currentSymbol<br/>• priceData<br/>• isRestoreMode<br/>• restoreSnapshot"]
+        JSRE[JSON State Restore Engine]
+        AI["AI Summary System<br/>• Session Management<br/>• Drag & Drop"]
+        WSM[WebSocket Manager]
+        TIMER[Timer Manager]
+    end
+    
+    %% ========== PROCESSING LAYER ==========
+    subgraph "PROCESSING PIPELINES"
+        UPDATE["Real-time Processor<br/>handleTickerUpdate()"]
+        ANALYTICS["Analytics Engine<br/>• Microstructure<br/>• Volatility<br/>• Risk Indicators"]
+        SNAPSHOT["Snapshot Generator<br/>generateSnapshot()"]
+        VALIDATE["Snapshot Validator<br/>validateSnapshot()"]
+    end
+    
+    %% ========== UI COMPONENTS ==========
+    subgraph "UI LAYER"
+        HEADER["Header & Time Display"]
+        SELECTOR["Crypto Selector<br/>9 Cryptocurrencies"]
+        PRICE["Price Card<br/>• Current Price<br/>• 24h Stats"]
+        MICRO["Market Microstructure<br/>• Order Flow Imbalance<br/>• Volume Slope"]
+        VOLATILITY["Volatility Metrics<br/>• 1h/4h/24h"]
+        ANOMALY["Anomaly Detection"]
+        TOPMOVERS["Top Movers"]
+        RISK["Risk Indicators"]
+        ALERTS["Alert Center"]
+        FAB["Floating Action Stack<br/>7 Functions"]
+        SEARCH["Universal Search<br/>Coins/Metrics/Alerts"]
+        FOOTER["Footer<br/>Connection Status"]
+        AI_PANEL["AI Summary Panel<br/>Draggable Window"]
+        JSRE_UI[JSRE Overlay & Modal]
+    end
+    
+    %% ========== USER ACTIONS ==========
+    subgraph "USER INTERACTIONS"
+        CLICK["Click/Tap Events"]
+        IMPORT["File Import<br/>JSON Snapshot"]
+        EXPORT["Export<br/>PDF/JSON/Both"]
+        SEARCH_IN["Search Input"]
+        DRAG["Drag AI Panel"]
+        TOGGLE["Toggle<br/>• Theme<br/>• Currency"]
+    end
+    
+    %% ========== DATA FLOWS ==========
+    %% Data Sources → Processing
+    WS -->|Real-time Stream| UPDATE
+    API -->|Fallback Data| UPDATE
+    XR -->|Currency Conversion| STATE
+    
+    %% Processing → State/UI
+    UPDATE --> STATE
+    UPDATE --> ANALYTICS
+    ANALYTICS --> MICRO
+    ANALYTICS --> VOLATILITY
+    ANALYTICS --> RISK
+    ANALYTICS --> ANOMALY
+    
+    %% State → UI Updates
+    STATE --> PRICE
+    STATE --> HEADER
+    STATE --> TOPMOVERS
+    STATE --> ALERTS
+    
+    %% Timer System
+    TIMER -->|Every Second| HEADER
+    TIMER -->|Every 30s| API
+    TIMER -->|Every 5s| XR
+    TIMER -->|Every 1s| FOOTER
+    
+    %% JSRE Workflow
+    IMPORT --> JSRE_UI
+    JSRE_UI -->|Validate| VALIDATE
+    VALIDATE -->|Success| JSRE
+    JSRE -->|Apply Snapshot| STATE
+    JSRE -->|Enter Restore Mode| TIMER[Stop Timers]
+    JSRE -->|Update UI| HEADER
+    
+    %% Snapshot Generation
+    CLICK -->|Export Button| SNAPSHOT
+    SNAPSHOT -->|Generate| EXPORT
+    
+    %% AI System
+    CLICK -->|AI Summary| AI
+    AI -->|Generate Summary| HF
+    HF -->|AI Response| AI_PANEL
+    AI -->|Drag Events| DRAG
+    
+    %% Search System
+    SEARCH_IN --> SEARCH
+    SEARCH -->|Coin Select| SELECTOR
+    SEARCH -->|Metric Focus| MICRO/VOLATILITY/RISK
+    
+    %% Theme/Currency
+    TOGGLE --> STATE
+    STATE -->|Theme Update| ALL_UI[All UI Components]
+    
+    %% ========== MODE SWITCHING ==========
+    subgraph "OPERATIONAL MODES"
+        LIVE["LIVE MODE<br/>• WebSocket Active<br/>• Real-time Updates<br/>• Live Data Processing"]
+        RESTORE["RESTORE MODE<br/>• WebSocket Disabled<br/>• Snapshot Data Only<br/>• Static Timestamp"]
+    end
+    
+    STATE -->|isRestoreMode: false| LIVE
+    STATE -->|isRestoreMode: true| RESTORE
+    
+    %% ========== KEY WORKFLOWS ==========
+    subgraph "MAIN WORKFLOWS"
+        WF1["1. INITIALIZATION<br/>• Setup Event Listeners<br/>• Connect WebSocket<br/>• Start Timers<br/>• Fetch Initial Data"]
+        WF2["2. REAL-TIME UPDATE<br/>WebSocket → State → UI"]
+        WF3["3. CRYPTO SWITCH<br/>Button Click → State Update → UI Refresh"]
+        WF4["4. SNAPSHOT EXPORT<br/>Click Export → Generate → Download"]
+        WF5["5. SNAPSHOT RESTORE<br/>File Import → Validate → Apply → Restore Mode"]
+        WF6["6. AI SUMMARY<br/>Click AI → Snapshot → API → Display"]
+        WF7["7. SEARCH<br/>Type → Filter → Select → Navigate"]
+    end
+    
+    %% Workflow Triggers
+    init[DOMContentLoaded] --> WF1
+    WS -->|onmessage| WF2
+    SELECTOR -->|onclick| WF3
+    FAB -->|exportBtn| WF4
+    FAB -->|importBtn| WF5
+    FAB -->|aiSummaryBtn| WF6
+    FAB -->|searchBtn| WF7
+    
+    %% ========== ERROR HANDLING ==========
+    subgraph "ERROR RECOVERY"
+        ERR_WS["WebSocket Error → Fallback to REST API"]
+        ERR_API["API Error → Use Cached Data"]
+        ERR_JSRE["Invalid Snapshot → Show Error Modal"]
+        ERR_AI["AI Service Error → Show Fallback Data"]
+    end
+    
+    WS -.->|onerror| ERR_WS
+    API -.->|catch| ERR_API
+    VALIDATE -.->|fail| ERR_JSRE
+    HF -.->|error| ERR_AI
+```
 
 
 ### 🌟 Key Differentiators
