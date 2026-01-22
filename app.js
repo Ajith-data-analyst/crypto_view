@@ -1,21 +1,3 @@
-// Changes Made:
-// 1. Fixed share environment functionality with LZ-String compression
-// 2. Fixed QR code generation using QRCode.js
-// 3. Fixed modal initialization and event handlers
-// 4. Fixed URL hash restoration
-// 5. All share features now working properly
-
-// Debug flag for share feature
-const SHARE_DEBUG = true;
-
-// Share Environment State
-const shareState = {
-    modal: null,
-    qrCode: null,
-    autoCloseTimer: null,
-    restoredFromLink: false
-};
-
 // Global State
 const state = {
     currentSymbol: 'BTC',
@@ -32,11 +14,9 @@ const state = {
     lastLivePrice: null,
     currency: 'USDT',
     usdtToInrRate: 83.5,
-    isRestoreMode: false,
-    restoreSnapshot: null,
-    restoredFromLink: false
+    isRestoreMode: false, // New: Track if we're in restore mode
+    restoreSnapshot: null // New: Store the active snapshot in restore mode
 };
-
 const JSRE = {
     overlay: null,
     progress: null,
@@ -46,16 +26,16 @@ const JSRE = {
     phase: 0
 };
 
-// AI Summary Session Management
+// AI Summary Session Management - FIXED
 let aiSummarySession = {
     snapshot: null,
     summaryText: "",
     generatedAt: null,
-    originalSnapshot: null,
+    originalSnapshot: null, // Store the original snapshot for regenerate
     isJSREMode: false
 };
 
-// Drag State for AI Panel
+// Drag State for AI Panel - FIXED
 let aiPanelDragState = {
     isDragging: false,
     offsetX: 0,
@@ -80,503 +60,9 @@ const cryptoMapping = {
 // Application version
 const APP_VERSION = '1.0';
 
-// ========================================
-// SHARE ENVIRONMENT FUNCTIONS - FIXED & WORKING
-// ========================================
-
-/**
- * Initialize the share environment modal
- */
-function initShareModal() {
-    console.log('[SHARE] Initializing share modal...');
-
-    shareState.modal = document.getElementById('shareEnvModal');
-
-    if (!shareState.modal) {
-        console.error('[SHARE] Share modal not found in DOM');
-        return;
-    }
-
-    console.log('[SHARE] Modal found');
-
-    // Setup close buttons
-    const closeBtns = shareState.modal.querySelectorAll('.share-modal-close');
-    closeBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeShareModal();
-        });
-    });
-
-    // Setup copy button
-    const copyBtn = shareState.modal.querySelector('.share-copy-btn');
-    if (copyBtn) {
-        copyBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            copyShareLink();
-        });
-    }
-
-    // Setup share button
-    const shareBtn = shareState.modal.querySelector('.share-share-btn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            shareViaNative();
-        });
-    }
-
-    // Close modal when clicking on backdrop
-    const backdrop = shareState.modal.querySelector('.share-modal-backdrop');
-    if (backdrop) {
-        backdrop.addEventListener('click', closeShareModal);
-    }
-
-    // Close on Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !shareState.modal.classList.contains('hidden')) {
-            closeShareModal();
-        }
-    });
-
-    // Select link text on click
-    const linkInput = shareState.modal.querySelector('.share-link-input');
-    if (linkInput) {
-        linkInput.addEventListener('click', function() {
-            this.select();
-        });
-    }
-
-    console.log('[SHARE] Modal initialized successfully');
-}
-
-/**
- * Strip sensitive fields from snapshot before sharing
- */
-function shareStripSensitive(snapshot) {
-    if (!snapshot || typeof snapshot !== 'object') return snapshot;
-
-    // Create a deep copy to avoid mutating original
-    const cleaned = JSON.parse(JSON.stringify(snapshot));
-
-    // Remove sensitive fields
-    if (cleaned.snapshot && cleaned.snapshot.metadata) {
-        // Keep only last 3 alerts for context
-        if (cleaned.snapshot.metadata.alerts && Array.isArray(cleaned.snapshot.metadata.alerts)) {
-            cleaned.snapshot.metadata.alerts = cleaned.snapshot.metadata.alerts.slice(0, 3);
-        }
-
-        // Add share metadata
-        cleaned.snapshot.metadata.sharedBy = 'client';
-        cleaned.snapshot.metadata.shareCreatedAt = new Date().toISOString();
-        cleaned.snapshot.metadata.shareVersion = '1.0';
-    }
-
-    return cleaned;
-}
-
-/**
- * Encode snapshot to URL-safe compressed string
- */
-function shareEncodeSnapshot(snapshot) {
-    try {
-        const jsonString = JSON.stringify(snapshot);
-        if (SHARE_DEBUG) console.log('[SHARE] Original JSON size:', jsonString.length);
-
-        const encoded = LZString.compressToEncodedURIComponent(jsonString);
-        if (SHARE_DEBUG) console.log('[SHARE] Encoded size:', encoded.length);
-
-        return encoded;
-    } catch (error) {
-        console.error('[SHARE] Encoding failed:', error);
-        return null;
-    }
-}
-
-/**
- * Decode snapshot from compressed string
- */
-function shareDecodeSnapshot(encoded) {
-    try {
-        const jsonString = LZString.decompressFromEncodedURIComponent(encoded);
-        if (!jsonString) {
-            throw new Error('Decompression returned null');
-        }
-
-        const snapshot = JSON.parse(jsonString);
-
-        // Basic validation
-        if (!snapshot.version || !snapshot.snapshot) {
-            throw new Error('Invalid snapshot structure');
-        }
-
-        return snapshot;
-    } catch (error) {
-        console.error('[SHARE] Decoding failed:', error);
-        return null;
-    }
-}
-
-/**
- * Generate shareable environment link
- */
-function generateShareableEnvironmentLink() {
-    try {
-        console.log('[SHARE] Generating shareable link...');
-
-        // Generate current snapshot
-        const snapshot = generateSnapshot();
-
-        // Strip sensitive data
-        const cleanedSnapshot = shareStripSensitive(snapshot);
-
-        // Encode to URL-safe string
-        const encoded = shareEncodeSnapshot(cleanedSnapshot);
-
-        if (!encoded) {
-            throw new Error('Failed to encode snapshot');
-        }
-
-        // Check URL length limit
-        if (encoded.length > 15000) {
-            addAlert('Snapshot too large for URL sharing. Please use JSON export instead.', 'warning');
-            return;
-        }
-
-        // Build shareable URL
-        const shareUrl = `${window.location.origin}${window.location.pathname}#env=${encoded}`;
-        console.log('[SHARE] Share URL generated');
-
-        // Open share modal
-        openShareModal(shareUrl, cleanedSnapshot);
-
-    } catch (error) {
-        console.error('[SHARE] Failed to generate share link:', error);
-        addAlert('Failed to generate share link. Please try again.', 'error');
-    }
-}
-
-/**
- * Open share modal with link and snapshot data
- */
-function openShareModal(link, snapshot, options = {}) {
-    const { autoCloseMs = null } = options;
-
-    if (!shareState.modal) {
-        console.error('[SHARE] Modal not initialized');
-        initShareModal();
-        if (!shareState.modal) return;
-    }
-
-    // Clear any existing auto-close timer
-    if (shareState.autoCloseTimer) {
-        clearTimeout(shareState.autoCloseTimer);
-        shareState.autoCloseTimer = null;
-    }
-
-    // Set link in input
-    const linkInput = shareState.modal.querySelector('.share-link-input');
-    if (linkInput) {
-        linkInput.value = link;
-    }
-
-    // Generate QR code
-    const qrContainer = shareState.modal.querySelector('#share-qr');
-    if (qrContainer) {
-        qrContainer.innerHTML = '';
-
-        try {
-            // Create new QR code
-            new QRCode(qrContainer, {
-                text: link,
-                width: 180,
-                height: 180,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-            });
-        } catch (error) {
-            console.error('[SHARE] QR generation failed:', error);
-            qrContainer.innerHTML = '<div class="share-qr-error">QR Code Failed<br><small>Try copying link instead</small></div>';
-        }
-    }
-
-    // Update stats from snapshot
-    updateShareModalStats(snapshot);
-
-    // Show modal
-    shareState.modal.classList.remove('hidden');
-
-    // Set auto-close timer if specified
-    if (autoCloseMs && autoCloseMs > 0) {
-        shareState.autoCloseTimer = setTimeout(() => {
-            closeShareModal();
-            addAlert('Share environment modal closed automatically', 'info');
-        }, autoCloseMs);
-    }
-
-    // Update modal title based on context
-    const modalTitle = shareState.modal.querySelector('.share-modal-title');
-    if (modalTitle) {
-        if (state.restoredFromLink) {
-            modalTitle.textContent = 'Crypto Statistic Environment (Restored)';
-        } else {
-            modalTitle.textContent = 'Crypto Statistic Environment';
-        }
-    }
-
-    console.log('[SHARE] Modal opened successfully');
-}
-
-/**
- * Update modal stats from snapshot data
- */
-function updateShareModalStats(snapshot) {
-    if (!snapshot || !snapshot.snapshot) return;
-
-    const applicationState = snapshot.snapshot.applicationState || {};
-    const metadata = snapshot.snapshot.metadata || {};
-    const priceDataMap = snapshot.snapshot.priceData || {};
-    const analyticsMap = snapshot.snapshot.derivedAnalytics || {};
-
-    const currentSymbol = applicationState.currentSymbol || 'BTC';
-    const priceData = priceDataMap[currentSymbol];
-    const analytics = analyticsMap[currentSymbol];
-
-    // Format price
-    let formattedPrice = '--';
-    if (priceData && priceData.price) {
-        formattedPrice = formatPrice(priceData.price);
-    }
-
-    // Update stats elements
-    const stats = {
-        'share-stat-asset': (currentSymbol + '/' + (applicationState.currency || 'USDT')),
-        'share-stat-price': formattedPrice,
-        'share-stat-volatility': analytics ?
-            ((analytics.volatility24h != null ?
-                analytics.volatility24h.toFixed(2) :
-                '--') + '%') : '--%',
-        'share-stat-imbalance': analytics ?
-            ((analytics.bidAskImbalance != null ?
-                analytics.bidAskImbalance.toFixed(1) :
-                '--') + '%') : '--%',
-        'share-stat-timestamp': metadata.snapshotTime ?
-            new Date(metadata.snapshotTime).toLocaleString() : '--',
-        'share-stat-quality': metadata.snapshotQuality || '--'
-    };
-
-    // Update each stat element
-    Object.entries(stats).forEach(function([id, value]) {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = value;
-
-            // Add quality class if quality element
-            if (id === 'share-stat-quality') {
-                element.className = 'share-stat-value';
-                const quality = metadata.snapshotQuality;
-                if (quality === 'FRESH') element.classList.add('share-stat-fresh');
-                else if (quality === 'RECENT') element.classList.add('share-stat-recent');
-                else if (quality === 'STALE') element.classList.add('share-stat-stale');
-            }
-        }
-    });
-}
-
-/**
- * Close the share modal
- */
-function closeShareModal() {
-    if (!shareState.modal) return;
-
-    shareState.modal.classList.add('hidden');
-
-    // Clear auto-close timer
-    if (shareState.autoCloseTimer) {
-        clearTimeout(shareState.autoCloseTimer);
-        shareState.autoCloseTimer = null;
-    }
-
-    // Reset restored flag
-    state.restoredFromLink = false;
-}
-
-/**
- * Copy share link to clipboard
- */
-function copyShareLink() {
-    const linkInput = shareState.modal.querySelector('.share-link-input');
-    if (!linkInput) return;
-
-    const link = linkInput.value;
-
-    if (!link || link.trim() === '') {
-        addAlert('No link to copy', 'warning');
-        return;
-    }
-
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(link)
-            .then(() => {
-                addAlert('Share link copied to clipboard!', 'success');
-
-                // Show feedback on button
-                const copyBtn = shareState.modal.querySelector('.share-copy-btn');
-                if (copyBtn) {
-                    const originalText = copyBtn.textContent;
-                    copyBtn.textContent = '✓ Copied!';
-                    copyBtn.style.background = 'var(--color-success)';
-                    setTimeout(() => {
-                        copyBtn.textContent = originalText;
-                        copyBtn.style.background = '';
-                    }, 1500);
-                }
-            })
-            .catch(err => {
-                console.error('[SHARE] Clipboard write failed:', err);
-                fallbackCopyText(link);
-            });
-    } else {
-        fallbackCopyText(link);
-    }
-}
-
-/**
- * Fallback copy method for older browsers
- */
-function fallbackCopyText(text) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            addAlert('Share link copied to clipboard!', 'success');
-        } else {
-            addAlert('Failed to copy link. Please copy manually.', 'error');
-        }
-    } catch (err) {
-        console.error('[SHARE] Fallback copy failed:', err);
-        addAlert('Failed to copy link. Please copy manually.', 'error');
-    }
-
-    document.body.removeChild(textArea);
-}
-
-/**
- * Share via native share API if available
- */
-function shareViaNative() {
-    const linkInput = shareState.modal.querySelector('.share-link-input');
-    if (!linkInput) return;
-
-    const link = linkInput.value;
-    const snapshot = generateSnapshot();
-    let assetName = 'Crypto';
-
-    if (
-        snapshot &&
-        snapshot.snapshot &&
-        snapshot.snapshot.applicationState &&
-        snapshot.snapshot.applicationState.currentName
-    ) {
-        assetName = snapshot.snapshot.applicationState.currentName;
-    }
-
-
-    if (navigator.share) {
-        navigator.share({
-                title: `Crypto View - ${assetName} Environment`,
-                text: `Check out this ${assetName} market environment snapshot`,
-                url: link
-            })
-            .then(() => {
-                addAlert('Shared successfully!', 'success');
-            })
-            .catch(err => {
-                if (err.name !== 'AbortError') {
-                    console.error('[SHARE] Native share failed:', err);
-                    copyShareLink();
-                }
-            });
-    } else {
-        copyShareLink();
-    }
-}
-
-/**
- * Check and apply shared environment from URL hash
- */
-function checkAndApplySharedEnvironmentFromHash() {
-    console.log('[SHARE] Checking URL hash for environment...');
-    const hash = window.location.hash;
-    if (!hash || !hash.includes('env=')) return;
-
-    try {
-        // Extract encoded snapshot from hash
-        const encoded = hash.split('env=')[1];
-        if (!encoded) return;
-
-        if (SHARE_DEBUG) console.log('[SHARE] Found environment in URL hash');
-
-        // Decode snapshot
-        const snapshot = shareDecodeSnapshot(encoded);
-        if (!snapshot) {
-            throw new Error('Failed to decode snapshot from URL');
-        }
-
-        // Validate snapshot
-        if (!validateSnapshot(snapshot)) {
-            throw new Error('Invalid snapshot format from URL');
-        }
-
-        // Set restored flag
-        state.restoredFromLink = true;
-
-        // Apply snapshot using existing JSRE functions
-        enterRestoreMode(snapshot);
-        applySnapshot(snapshot);
-        updateUIFromSnapshot(snapshot);
-
-        addAlert(`Environment restored from shared link`, 'success');
-
-        // Open share modal after a short delay
-        setTimeout(() => {
-            const shareUrl = window.location.href;
-            openShareModal(shareUrl, snapshot, { autoCloseMs: 5000 });
-        }, 500);
-
-    } catch (error) {
-        console.error('[SHARE] Failed to restore from URL:', error);
-        addAlert('Failed to restore environment from link', 'error');
-        // Clear invalid hash
-        window.location.hash = '';
-    }
-}
-
-// ========================================
-// APPLICATION INITIALIZATION
-// ========================================
-
-/**
- * Initialize application
- */
+// Initialize application
 function init() {
     console.log("[APP] Initializing...");
-
-    // Check for shared environment in URL hash BEFORE initializing live data
-    checkAndApplySharedEnvironmentFromHash();
-
     updateTime();
     setInterval(updateTime, 1000);
     setupCryptoSelector();
@@ -586,11 +72,11 @@ function init() {
     setupSearchPanel();
     setupCurrencyToggle();
     initJSREOverlay();
-    setupAIPanelDrag();
-    initShareModal();
+    setupAIPanelDrag(); // Initialize drag functionality
+
 
     // Only connect to live data if not in restore mode
-    if (!state.isRestoreMode && !state.restoredFromLink) {
+    if (!state.isRestoreMode) {
         connectWebSocket();
         fetchAllCryptoData();
         setInterval(() => fetchAllCryptoData(), 30000);
@@ -607,13 +93,12 @@ function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const restoreParam = urlParams.get('restore');
     if (restoreParam === 'demo') {
+        // Load a demo snapshot (for testing)
         loadDemoSnapshot();
     }
 }
 
-/**
- * Update current time
- */
+// Update current time
 function updateTime() {
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { hour12: false });
@@ -621,12 +106,10 @@ function updateTime() {
     if (el) el.textContent = timeString;
 }
 
-/**
- * Setup crypto selector buttons
- */
 function setupCryptoSelector() {
     const buttons = document.querySelectorAll('.crypto-btn');
 
+    // 🔹 INITIAL STATE: hide the default active crypto (BTC)
     buttons.forEach(btn => {
         const isCurrent = btn.dataset.symbol === state.currentSymbol;
 
@@ -636,7 +119,9 @@ function setupCryptoSelector() {
             btn.classList.remove('active', 'hidden');
         }
 
+        // 🔹 CLICK HANDLER
         btn.addEventListener('click', () => {
+            // In restore mode, we still allow switching but only between restored symbols
             if (state.isRestoreMode && state.restoreSnapshot) {
                 const availableSymbols = Object.keys(state.restoreSnapshot.snapshot.priceData || {});
                 if (!availableSymbols.includes(btn.dataset.symbol)) {
@@ -645,22 +130,25 @@ function setupCryptoSelector() {
                 }
             }
 
+            // 1. Reset all buttons
             buttons.forEach(b => b.classList.remove('active', 'hidden'));
+
+            // 2. Make clicked one active + hidden
             btn.classList.add('active', 'hidden');
 
+            // 3. Update state
             state.currentSymbol = btn.dataset.symbol;
             state.currentName = btn.dataset.name;
             state.currentIcon = btn.dataset.icon;
 
+            // 4. Refresh UI
             updatePriceDisplay();
             addAlert(`Switched to ${state.currentName}`, 'info');
         });
     });
 }
 
-/**
- * Setup export dropdown
- */
+// Setup export dropdown (replaces old setupExportButton)
 function setupExportDropdown() {
     const exportBtn = document.getElementById('exportBtn');
     const exportDropdown = document.getElementById('exportDropdown');
@@ -668,11 +156,13 @@ function setupExportDropdown() {
 
     if (!exportBtn || !exportDropdown) return;
 
+    // Toggle dropdown on export button click
     exportBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         exportDropdown.classList.toggle('active');
     });
 
+    // Handle option clicks
     exportOptions.forEach(option => {
         option.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -688,10 +178,8 @@ function setupExportDropdown() {
                 case 'both':
                     generateAndExport('both');
                     break;
-                case 'share':
-                    generateShareableEnvironmentLink();
-                    break;
                 case 'cancel':
+                    // Just close dropdown
                     break;
             }
 
@@ -699,21 +187,19 @@ function setupExportDropdown() {
         });
     });
 
+    // Close dropdown when clicking outside
     document.addEventListener('click', () => {
         exportDropdown.classList.remove('active');
     });
 
+    // Prevent dropdown from closing when clicking inside it
     exportDropdown.addEventListener('click', (e) => {
         e.stopPropagation();
     });
 }
-
 let jsonModalTimerId = null;
 let jsonModalCountdownId = null;
 
-/**
- * Show JSON decision modal
- */
 function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onSecondary, autoAction, timerFormat }) {
     console.log("[JSRE] Showing decision modal");
     const modal = document.getElementById("jsonDecisionModal");
@@ -761,17 +247,13 @@ function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onS
     }, 1000);
 }
 
-/**
- * Close JSON modal
- */
 function closeJsonModal() {
     clearInterval(jsonModalCountdownId);
     document.getElementById("jsonDecisionModal").style.display = "none";
 }
 
-/**
- * Setup import button for JSON snapshot restoration
- */
+
+// Setup import button for JSON snapshot restoration
 function setupImportButton() {
     console.log("[JSRE] Setting up import button");
     const importBtn = document.getElementById('importBtn');
@@ -805,16 +287,20 @@ function setupImportButton() {
             console.log("[JSRE] File read complete");
             showJSRE();
 
+            // Store timeout IDs so we can clear them on error
             const timeoutIds = [];
 
+            // Phase 1: Redirecting to restore environment (2-4.5s)
             timeoutIds.push(setTimeout(() => {
                 advanceJSRE("Redirecting to restore environment");
             }, 2000));
 
+            // Phase 2: Uploading snapshot file (4.5-7s)
             timeoutIds.push(setTimeout(() => {
                 advanceJSRE("Uploading snapshot file");
             }, 4500));
 
+            // Phase 3: Validating snapshot structure (7-9.5s)
             timeoutIds.push(setTimeout(() => {
                 advanceJSRE("Validating snapshot structure");
 
@@ -825,23 +311,28 @@ function setupImportButton() {
                     console.log("[JSRE] JSON parsed successfully");
                 } catch (err) {
                     console.error("[JSRE] JSON parse error:", err.message);
+                    // Clear remaining timeouts for incorrect file
                     timeoutIds.forEach(id => clearTimeout(id));
-                    jsreError();
+                    jsreError(); // This will show error at 9.5s
                     return;
                 }
 
                 console.log("[JSRE] Validating snapshot structure...");
                 if (!validateSnapshot(snapshot)) {
                     console.error("[JSRE] Snapshot validation failed");
+                    // Clear remaining timeouts for incorrect file
                     timeoutIds.forEach(id => clearTimeout(id));
-                    jsreError();
+                    jsreError(); // This will show error at 9.5s
                     return;
                 }
 
                 console.log("[JSRE] Snapshot validation passed");
+                // Only proceed to Phase 4 if file is correct
+                // Phase 4: Preparing secure restore session (9.5-12s)
                 timeoutIds.push(setTimeout(() => {
                     advanceJSRE("Preparing secure restore session");
 
+                    // Final delay before showing modal (12-12.5s)
                     timeoutIds.push(setTimeout(() => {
                         console.log("[JSRE] Showing restore confirmation modal");
                         JSRE.overlay.classList.add("hidden");
@@ -863,11 +354,11 @@ function setupImportButton() {
                                 restoreFromSnapshot(snapshot);
                             }
                         });
-                    }, 500));
+                    }, 500)); // Small delay after final phase
 
-                }, 2500));
+                }, 2500)); // Phase 4 starts 2500ms after Phase 3
 
-            }, 7000));
+            }, 7000)); // Phase 3 starts at 7000ms (2s + 2.5s + 2.5s)
         };
 
         reader.onerror = () => {
@@ -876,19 +367,19 @@ function setupImportButton() {
         };
 
         reader.readAsText(file);
+
+        // Reset file input
         importFileInput.value = '';
     });
 }
 
-/**
- * Update date time from snapshot
- */
 function updateDateTimeFromSnapshot(snapshot) {
     const el = document.getElementById('currentTime');
     if (!el) return;
 
     const snapshotDate = new Date(snapshot.snapshot.metadata.snapshotTime);
-    const datePart = snapshotDate.toLocaleDateString('en-CA');
+
+    const datePart = snapshotDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
     const timePart = snapshotDate.toLocaleTimeString('en-US', {
         hour12: false
     });
@@ -896,11 +387,11 @@ function updateDateTimeFromSnapshot(snapshot) {
     el.textContent = `${datePart}  | ${timePart}`;
 }
 
-/**
- * Generate and export based on format
- */
+
+// Generate and export based on format
 function generateAndExport(format) {
     try {
+        // Generate single snapshot
         const snapshot = generateSnapshot();
 
         switch (format) {
@@ -921,25 +412,30 @@ function generateAndExport(format) {
     }
 }
 
-/**
- * Generate comprehensive snapshot
- */
+// Generate comprehensive snapshot
 function generateSnapshot() {
     const now = new Date();
     const snapshotTime = now.toISOString();
     const readableTime = now.toLocaleString();
 
+    // Calculate data freshness
     const dataFreshnessSeconds = Math.floor((Date.now() - state.lastUpdateTime) / 1000);
 
+    // Determine snapshot quality
     let snapshotQuality = 'STALE';
     if (dataFreshnessSeconds <= 10) snapshotQuality = 'FRESH';
     else if (dataFreshnessSeconds <= 60) snapshotQuality = 'RECENT';
 
+    // Get WebSocket status
     const wsStatus = state.ws && state.ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected';
+
+    // Determine data source
     const dataSourcePath = wsStatus === 'connected' ? 'Binance WebSocket (Primary)' : 'CoinGecko REST (Fallback)';
 
+    // Get all symbols from priceData
     const allSymbols = Object.keys(state.priceData);
 
+    // Pre-calculate derived analytics for all symbols
     const derivedAnalytics = {};
     const currencyContext = {
         base: 'USDT',
@@ -951,22 +447,29 @@ function generateSnapshot() {
         const data = state.priceData[symbol];
         if (!data) return;
 
+        // Store currency conversions
         currencyContext.prices[symbol] = {
             usdt: data.price,
             inr: data.price * state.usdtToInrRate
         };
 
+        // Calculate microstructure metrics
         const priceRange = data.high24h - data.low24h || 1;
         const pricePosition = (data.price - data.low24h) / priceRange;
         const avgPrice = (data.high24h + data.low24h) / 2 || data.price || 1;
 
         derivedAnalytics[symbol] = {
+            // Microstructure
             orderFlowImbalance: (pricePosition - 0.5) * 100,
             bidAskImbalance: pricePosition * 100,
             volumeSlope: data.priceChangePercent24h * 2,
+
+            // Volatility
             volatility1h: ((priceRange / avgPrice) * 100) / 24,
             volatility4h: ((priceRange / avgPrice) * 100) / 6,
             volatility24h: (priceRange / avgPrice) * 100,
+
+            // Risk indicators
             volatilityRiskScore: Math.min(((data.high24h - data.low24h) / (data.price || 1)) * 100, 100),
             liquidityScore: Math.min((data.volume24h / 1000000) * 10, 100),
             whaleActivityScore: Math.min((data.volume24h / data.price) % 100, 100),
@@ -974,17 +477,22 @@ function generateSnapshot() {
         };
     });
 
+    // Build top movers from snapshot data
     const topMovers = Object.entries(state.priceData)
         .map(([symbol, data]) => ({ symbol, change: data.priceChangePercent24h }))
         .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
         .slice(0, 5);
 
+    // Get current UI context
+    const currentCryptoBtn = document.querySelector(`.crypto-btn[data-symbol="${state.currentSymbol}"]`);
     const displayPair = `${state.currentSymbol}/${state.currency}`;
 
+    // Build snapshot object
     const snapshot = {
         version: "1.0",
         engine: "CryptoView-JSRE",
         snapshot: {
+            // Application state
             applicationState: {
                 currentSymbol: state.currentSymbol,
                 currentName: state.currentName,
@@ -995,9 +503,17 @@ function generateSnapshot() {
                 dataSourcePath: dataSourcePath,
                 themeMode: state.theme
             },
-            priceData: JSON.parse(JSON.stringify(state.priceData)),
+
+            // Raw price data for ALL symbols
+            priceData: JSON.parse(JSON.stringify(state.priceData)), // Deep clone
+
+            // Currency context
             currencyContext: currencyContext,
+
+            // Derived analytics (pre-computed)
             derivedAnalytics: derivedAnalytics,
+
+            // UI context
             uiContext: {
                 selectedAsset: {
                     name: state.currentName,
@@ -1011,6 +527,8 @@ function generateSnapshot() {
                 },
                 theme: state.theme
             },
+
+            // Metadata
             metadata: {
                 snapshotTime: snapshotTime,
                 dataFreshnessSeconds: dataFreshnessSeconds,
@@ -1018,9 +536,13 @@ function generateSnapshot() {
                 totalDataPoints: state.dataPointsCount,
                 snapshotQuality: snapshotQuality,
                 applicationVersion: APP_VERSION,
-                alerts: [...state.alerts].slice(0, 10)
+                alerts: [...state.alerts].slice(0, 10) // Last 10 alerts
             },
+
+            // Top movers (pre-computed)
             topMovers: topMovers,
+
+            // Anomalies (current state)
             anomalies: getCurrentAnomalies()
         }
     };
@@ -1028,9 +550,7 @@ function generateSnapshot() {
     return snapshot;
 }
 
-/**
- * Get current anomalies for snapshot
- */
+// Get current anomalies for snapshot
 function getCurrentAnomalies() {
     const anomalies = [];
     Object.entries(state.priceData).forEach(([symbol, data]) => {
@@ -1053,9 +573,7 @@ function getCurrentAnomalies() {
     return anomalies;
 }
 
-/**
- * Export to PDF
- */
+// Export to PDF (modified to use snapshot)
 function exportToPDF(snapshot) {
     try {
         if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -1068,6 +586,7 @@ function exportToPDF(snapshot) {
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
 
+        // ---------- helpers ----------
         function n(v, d = 2) {
             const num = Number(v);
             if (!isFinite(num)) return "N/A";
@@ -1134,6 +653,7 @@ function exportToPDF(snapshot) {
             pdf.text(value2, pageW / 2 + 55, y);
         }
 
+        // ---------- snapshot values ----------
         const c = snapshot.snapshot.priceData[snapshot.snapshot.applicationState.currentSymbol];
         const now = new Date();
         const last = c.lastUpdate || now.getTime();
@@ -1158,7 +678,9 @@ function exportToPDF(snapshot) {
         const whale = Math.min((c.volume24h / c.price) % 100, 100);
         const dev = Math.min(Math.abs((c.price - c.low24h) / c.price) * 100, 100);
 
-        // PAGE 1
+        // =====================================================
+        // PAGE 1 – MARKET ANALYTICS
+        // =====================================================
         drawHeader(
             "Crypto View - Real-Time Market Report",
             "Generated: " + new Date().toLocaleString()
@@ -1166,6 +688,7 @@ function exportToPDF(snapshot) {
 
         let y = 32;
 
+        // Snapshot Metadata
         sectionHeader("Snapshot Metadata", y);
         y += 10;
         twoColumn(
@@ -1195,6 +718,7 @@ function exportToPDF(snapshot) {
         labelPair("Source Path", srcPath, y);
         y += 10;
 
+        // Price Summary – include USDT + INR for all key metrics
         sectionHeader("Price Summary (Live)", y);
         y += 10;
         twoColumn(
@@ -1232,6 +756,7 @@ function exportToPDF(snapshot) {
         labelPair("Change (24h)", n(c.priceChangePercent24h) + "%", y);
         y += 12;
 
+        // Market Microstructure
         sectionHeader("Market Microstructure", y);
         y += 10;
         twoColumn(
@@ -1245,6 +770,7 @@ function exportToPDF(snapshot) {
         labelPair("Volume Slope", n(vSlope), y);
         y += 12;
 
+        // Volatility Metrics
         sectionHeader("Volatility Metrics", y);
         y += 10;
         twoColumn(
@@ -1258,6 +784,7 @@ function exportToPDF(snapshot) {
         labelPair("1h Volatility", n(vol1) + "%", y);
         y += 12;
 
+        // Risk Indicators
         sectionHeader("Risk Indicators", y);
         y += 10;
         twoColumn(
@@ -1277,6 +804,7 @@ function exportToPDF(snapshot) {
         );
         y += 12;
 
+        // Top Movers
         sectionHeader("Top Market Movers", y);
         y += 10;
         const movers = snapshot.snapshot.topMovers;
@@ -1292,7 +820,9 @@ function exportToPDF(snapshot) {
             y += 6;
         });
 
-        // PAGE 2
+        // =====================================================
+        // PAGE 2 – ALERTS + VERIFICATION + LINKS
+        // =====================================================
         pdf.addPage();
         drawHeader(
             "Crypto View - Alerts & Verification",
@@ -1300,6 +830,7 @@ function exportToPDF(snapshot) {
         );
         y = 32;
 
+        // Recent Alerts
         sectionHeader("Recent Alerts", y);
         y += 10;
         pdf.setFontSize(10.5);
@@ -1326,6 +857,7 @@ function exportToPDF(snapshot) {
             });
         }
 
+        // ── Pull the verification panel DOWN near bottom ──
         const panelHeight = 38;
         const bottomMargin = 22;
         const desiredTop = pageH - bottomMargin - panelHeight;
@@ -1368,6 +900,7 @@ function exportToPDF(snapshot) {
             panelTop + 31
         );
 
+        // Seal
         const cx = pageW - 32;
         const cy = panelTop + panelHeight / 2;
         pdf.setDrawColor(160, 0, 0);
@@ -1379,6 +912,7 @@ function exportToPDF(snapshot) {
 
         centered("VERIFIED", cx, cy + 2, 7);
 
+        // ---------- FOOTER ON EVERY PAGE ----------
         const githubUrl = "https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt";
         const liveUrl = "https://ajith-data-analyst.github.io/crypto_view/";
         const copyrightText = "© 2025 Crypto View | All rights reserved | Live Crypto Price Analytics";
@@ -1388,9 +922,11 @@ function exportToPDF(snapshot) {
             pdf.setPage(p);
             pdf.setFontSize(8);
 
+            // Left footer: CRYPTO VIEW (clickable)
             pdf.setTextColor(40, 70, 160);
             pdf.textWithLink("CRYPTO VIEW", 12, pageH - 8, { url: liveUrl });
 
+            // Right footer: copyright (clickable)
             pdf.setTextColor(40, 40, 40);
             const cw = pdf.getTextWidth(copyrightText);
             const cxRight = pageW - 12 - cw;
@@ -1407,11 +943,10 @@ function exportToPDF(snapshot) {
     }
 }
 
-/**
- * Export to JSON
- */
+// Export to JSON
 function exportToJSON(snapshot) {
     try {
+        // Create pretty-printed JSON
         const jsonString = JSON.stringify(snapshot, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1430,24 +965,28 @@ function exportToJSON(snapshot) {
     }
 }
 
-// ========================================
+// =====================================================
 // JSRE - JSON STATE RESTORE ENGINE
-// ========================================
+// =====================================================
 
-/**
- * Restore application from snapshot
- */
+// Restore application from snapshot
 function restoreFromSnapshot(snapshot) {
     try {
         console.log("[JSRE] Starting restore process...");
+        // Validate snapshot structure
         if (!validateSnapshot(snapshot)) {
             addAlert("Invalid snapshot format", "error");
             return;
         }
 
         console.log("[JSRE] Snapshot validated, entering restore mode");
+        // Enter restore mode
         enterRestoreMode(snapshot);
+
+        // Apply snapshot data
         applySnapshot(snapshot);
+
+        // Update UI
         updateUIFromSnapshot(snapshot);
 
         console.log("[JSRE] Restore completed successfully");
@@ -1458,9 +997,7 @@ function restoreFromSnapshot(snapshot) {
     }
 }
 
-/**
- * Validate snapshot structure
- */
+// Validate snapshot structure
 function validateSnapshot(snapshot) {
     console.log("[JSRE] Validating snapshot structure...");
 
@@ -1508,9 +1045,6 @@ function validateSnapshot(snapshot) {
     return true;
 }
 
-/**
- * Enter restore mode
- */
 function enterRestoreMode(snapshot) {
     console.log("[JSRE] Entering restore mode");
     state.isRestoreMode = true;
@@ -1521,18 +1055,21 @@ function enterRestoreMode(snapshot) {
         state.ws.close();
     }
 
+    // Clear all timers
     console.log("[JSRE] Clearing existing timers");
     const highestId = window.setTimeout(() => {}, 0);
     for (let i = 0; i < highestId; i++) {
         window.clearInterval(i);
     }
 
+    // 🔹 Show snapshot DATE + TIME in header
     updateDateTimeFromSnapshot(snapshot);
 
     const indicator = document.getElementById('restoreModeIndicator');
     const restoreText = document.getElementById('restoreModeText');
     const exitBtn = document.getElementById('exitRestoreModeBtn');
 
+    // Show Restore FAB
     const restoreFab = document.getElementById('restoreFabBtn');
     if (restoreFab) {
         restoreFab.style.display = 'flex';
@@ -1555,60 +1092,63 @@ function enterRestoreMode(snapshot) {
     console.log("[JSRE] Restore mode activated");
 }
 
-/**
- * Exit restore mode
- */
+// Exit restore mode
 function exitRestoreMode() {
     console.log("[JSRE] Exiting restore mode");
     state.isRestoreMode = false;
     state.restoreSnapshot = null;
 
+    // Hide restore mode indicator
     const indicator = document.getElementById('restoreModeIndicator');
     if (indicator) {
         indicator.style.display = 'none';
     }
 
+    // Hide restore FAB
     const restoreFab = document.getElementById('restoreFabBtn');
     if (restoreFab) {
         restoreFab.style.display = 'none';
     }
 
+    // Reload the page to restart live data
     console.log("[JSRE] Reloading page to restore live data");
     window.location.reload();
 }
 
-/**
- * Apply snapshot data to state
- */
+// Apply snapshot data to state
 function applySnapshot(snapshot) {
     console.log("[JSRE] Applying snapshot data to state");
+    // Update application state
     state.currentSymbol = snapshot.snapshot.applicationState.currentSymbol;
     state.currentName = snapshot.snapshot.applicationState.currentName;
     state.currentIcon = snapshot.snapshot.applicationState.currentIcon;
     state.currency = snapshot.snapshot.applicationState.currency;
     state.theme = snapshot.snapshot.applicationState.theme;
 
+    // Update price data (deep copy)
     state.priceData = JSON.parse(JSON.stringify(snapshot.snapshot.priceData));
 
+    // Update currency conversion rate
     if (snapshot.snapshot.currencyContext && snapshot.snapshot.currencyContext.conversionRate) {
         state.usdtToInrRate = snapshot.snapshot.currencyContext.conversionRate;
     }
 
+    // Update alerts
     if (snapshot.snapshot.metadata.alerts) {
         state.alerts = [...snapshot.snapshot.metadata.alerts];
     }
 
+    // Update data points count
     state.dataPointsCount = snapshot.snapshot.metadata.totalDataPoints || 0;
     state.lastUpdateTime = new Date(snapshot.snapshot.metadata.snapshotTime).getTime();
 
     console.log(`[JSRE] Applied snapshot for ${state.currentSymbol}`);
 }
 
-/**
- * Update UI from snapshot
- */
+// Update UI from snapshot
 function updateUIFromSnapshot(snapshot) {
     console.log("[JSRE] Updating UI from snapshot");
+    // Update theme
     if (snapshot.snapshot.applicationState.theme) {
         state.theme = snapshot.snapshot.applicationState.theme;
         document.documentElement.setAttribute('data-theme', state.theme);
@@ -1620,6 +1160,7 @@ function updateUIFromSnapshot(snapshot) {
         }
     }
 
+    // Update currency toggle button
     const currencyBtn = document.getElementById('currencyToggle');
     if (currencyBtn) {
         const icon = currencyBtn.querySelector('.fab-icon');
@@ -1628,6 +1169,7 @@ function updateUIFromSnapshot(snapshot) {
         }
     }
 
+    // Update crypto selector buttons
     const buttons = document.querySelectorAll('.crypto-btn');
     buttons.forEach(btn => {
         const symbol = btn.dataset.symbol;
@@ -1639,28 +1181,38 @@ function updateUIFromSnapshot(snapshot) {
         }
     });
 
+    // Update price display (using snapshot data)
     updatePriceDisplayFromSnapshot(snapshot);
+
+    // Update market microstructure from pre-computed analytics
     updateMicrostructureFromSnapshot(snapshot);
+
+    // Update volatility metrics from pre-computed analytics
     updateVolatilityFromSnapshot(snapshot);
+
+    // Update risk indicators from pre-computed analytics
     updateRiskIndicatorsFromSnapshot(snapshot);
 
+    // Update top movers
     if (snapshot.snapshot.topMovers) {
         updateTopMoversFromSnapshot(snapshot);
     }
 
+    // Update anomalies
     if (snapshot.snapshot.anomalies) {
         updateAnomaliesFromSnapshot(snapshot);
     }
 
+    // Update alerts
     updateAlertsFromSnapshot(snapshot);
+
+    // Update system health indicators
     updateSystemHealthFromSnapshot(snapshot);
 
     console.log("[JSRE] UI update complete");
 }
 
-/**
- * Update price display from snapshot
- */
+// Update price display from snapshot
 function updatePriceDisplayFromSnapshot(snapshot) {
     const data = snapshot.snapshot.priceData[state.currentSymbol];
     if (!data) {
@@ -1678,18 +1230,23 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
 
+    // Update symbol display based on currency
     if (symbolEl) {
         symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
     }
 
+    // Ensure elements exist
     if (!currentPriceEl || !priceArrowEl || !priceChangeEl) return;
 
+    // Remove any previous classes
     currentPriceEl.classList.remove('price-pulse', 'positive', 'negative');
     priceArrowEl.classList.remove('neutral', 'positive', 'negative');
 
+    // Set neutral arrow for snapshot (no live tick)
     priceArrowEl.classList.add('neutral');
     priceArrowEl.textContent = '→';
 
+    // Set price color based on 24h change
     const changePercent = data.priceChangePercent24h;
     if (changePercent > 0) {
         currentPriceEl.classList.add('positive');
@@ -1697,8 +1254,10 @@ function updatePriceDisplayFromSnapshot(snapshot) {
         currentPriceEl.classList.add('negative');
     }
 
+    // Set displayed formatted price
     currentPriceEl.textContent = formatPrice(data.price);
 
+    // Update price change display (24h)
     const changeAmount = data.priceChange24h;
     priceChangeEl.className = 'price-change ' + (changePercent >= 0 ? 'positive' : 'negative');
     const changeValueEl = priceChangeEl.querySelector('.change-value');
@@ -1706,6 +1265,7 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (changeValueEl) changeValueEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
     if (changeAmountEl) changeAmountEl.textContent = `${changePercent >= 0 ? '+' : ''}${formatPrice(changeAmount)}`;
 
+    // Stats
     const highEl = document.getElementById('high24h');
     const lowEl = document.getElementById('low24h');
     const volEl = document.getElementById('volume24h');
@@ -1713,11 +1273,13 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (lowEl) lowEl.textContent = formatPrice(data.low24h);
     if (volEl) volEl.textContent = formatVolume(data.volume24h);
 
+    // Update footer live price
     const footerPriceEl = document.getElementById("footerLivePrice");
     if (footerPriceEl) {
         footerPriceEl.textContent = formatPrice(data.price);
         footerPriceEl.classList.remove("footer-price-green", "footer-price-red");
 
+        // In restore mode, color based on 24h change
         if (changePercent > 0) {
             footerPriceEl.classList.add("footer-price-green");
         } else if (changePercent < 0) {
@@ -1726,9 +1288,7 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     }
 }
 
-/**
- * Update microstructure from snapshot
- */
+// Update microstructure from snapshot (pre-computed)
 function updateMicrostructureFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) {
@@ -1761,9 +1321,7 @@ function updateMicrostructureFromSnapshot(snapshot) {
     }
 }
 
-/**
- * Update volatility from snapshot
- */
+// Update volatility from snapshot (pre-computed)
 function updateVolatilityFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1785,9 +1343,7 @@ function updateVolatilityFromSnapshot(snapshot) {
     if (vol24hGaugeEl) vol24hGaugeEl.style.width = `${Math.min(analytics.volatility24h * 10, 100)}%`;
 }
 
-/**
- * Update risk indicators from snapshot
- */
+// Update risk indicators from snapshot (pre-computed)
 function updateRiskIndicatorsFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1800,9 +1356,7 @@ function updateRiskIndicatorsFromSnapshot(snapshot) {
     });
 }
 
-/**
- * Update top movers from snapshot
- */
+// Update top movers from snapshot (pre-computed)
 function updateTopMoversFromSnapshot(snapshot) {
     const container = document.getElementById('top-movers');
     if (!container || !snapshot.snapshot.topMovers) return;
@@ -1817,9 +1371,7 @@ function updateTopMoversFromSnapshot(snapshot) {
     `).join('');
 }
 
-/**
- * Update anomalies from snapshot
- */
+// Update anomalies from snapshot
 function updateAnomaliesFromSnapshot(snapshot) {
     const container = document.getElementById('anomalyContainer');
     if (!container) return;
@@ -1844,9 +1396,7 @@ function updateAnomaliesFromSnapshot(snapshot) {
     }
 }
 
-/**
- * Update alerts from snapshot
- */
+// Update alerts from snapshot
 function updateAlertsFromSnapshot(snapshot) {
     const container = document.getElementById('alertsContainer');
     if (!container || !snapshot.snapshot.metadata.alerts) return;
@@ -1859,9 +1409,7 @@ function updateAlertsFromSnapshot(snapshot) {
     `).join('');
 }
 
-/**
- * Update system health from snapshot
- */
+// Update system health from snapshot
 function updateSystemHealthFromSnapshot(snapshot) {
     const now = new Date();
     const snapshotTime = new Date(snapshot.snapshot.metadata.snapshotTime);
@@ -1880,9 +1428,7 @@ function updateSystemHealthFromSnapshot(snapshot) {
     if (footerConnectionEl) footerConnectionEl.textContent = 'JSRE';
 }
 
-/**
- * Load a demo snapshot (for testing)
- */
+// Load a demo snapshot (for testing)
 function loadDemoSnapshot() {
     console.log("[JSRE] Loading demo snapshot");
     const demoSnapshot = {
@@ -1976,29 +1522,30 @@ function loadDemoSnapshot() {
         }
     };
 
+    // Add a small delay to ensure UI is ready
     setTimeout(() => {
         restoreFromSnapshot(demoSnapshot);
         addAlert("Demo snapshot loaded successfully", "info");
     }, 1000);
 }
 
-// ========================================
-// CURRENCY & THEME FUNCTIONS
-// ========================================
+// =====================================================
+// REST OF THE EXISTING FUNCTIONS (mostly unchanged)
+// =====================================================
 
-/**
- * Setup currency toggle
- */
+// Setup currency toggle with emoji + animation
 function setupCurrencyToggle() {
     const currencyBtn = document.getElementById('currencyToggle');
     if (!currencyBtn) return;
 
     const icon = currencyBtn.querySelector('.fab-icon');
 
+    // 1) Set initial label based on default state (USDT)
     if (icon) {
         icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
     }
 
+    // 2) Helper to play tiny pop/spin animation on the button
     function playToggleAnimation() {
         currencyBtn.classList.remove('currency-toggle-pop');
         void currencyBtn.offsetWidth;
@@ -2008,7 +1555,9 @@ function setupCurrencyToggle() {
         }, 200);
     }
 
+    // 3) Click handler
     currencyBtn.addEventListener('click', () => {
+        // In restore mode, check if we have both currency values
         if (state.isRestoreMode && state.restoreSnapshot) {
             const symbol = state.currentSymbol;
             const currencyData = state.restoreSnapshot.snapshot.currencyContext.prices[symbol];
@@ -2018,29 +1567,32 @@ function setupCurrencyToggle() {
             }
         }
 
+        // flip USDT / INR
         state.currency = state.currency === 'USDT' ? 'INR' : 'USDT';
 
+        // update emoji + text
         if (icon) {
             icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
         }
 
+        // play button animation
         playToggleAnimation();
 
+        // redraw prices
         if (state.isRestoreMode && state.restoreSnapshot) {
             updatePriceDisplayFromSnapshot(state.restoreSnapshot);
         } else {
             updatePriceDisplay();
         }
 
+        // log alert
         addAlert(`Currency switched to ${state.currency}`, 'info');
     });
 }
 
-/**
- * Fetch USDT to INR conversion rate
- */
+// Fetch USDT to INR conversion rate
 async function fetchUsdtToInrRate() {
-    if (state.isRestoreMode) return;
+    if (state.isRestoreMode) return; // Don't fetch in restore mode
 
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -2052,15 +1604,9 @@ async function fetchUsdtToInrRate() {
     }
 }
 
-// ========================================
-// WEBSOCKET & DATA FUNCTIONS
-// ========================================
-
-/**
- * Connect to Binance WebSocket
- */
+// Connect to Binance WebSocket
 function connectWebSocket() {
-    if (state.isRestoreMode) return;
+    if (state.isRestoreMode) return; // Don't connect in restore mode
 
     try {
         const streams = Object.values(cryptoMapping).map(s => `${s}@ticker`).join('/');
@@ -2100,9 +1646,7 @@ function connectWebSocket() {
     }
 }
 
-/**
- * Handle ticker updates from WebSocket
- */
+// Handle ticker updates from WebSocket
 function handleTickerUpdate(data) {
     const symbol = data.s.replace('USDT', '');
 
@@ -2129,11 +1673,9 @@ function handleTickerUpdate(data) {
     detectAnomalies(symbol);
 }
 
-/**
- * Fetch data from CoinGecko as fallback
- */
+// Fetch data from CoinGecko as fallback
 async function fetchAllCryptoData() {
-    if (state.isRestoreMode) return;
+    if (state.isRestoreMode) return; // Don't fetch in restore mode
 
     try {
         const ids = 'bitcoin,ethereum,cardano,polkadot,solana,binancecoin,ripple,dogecoin,matic-network,litecoin';
@@ -2177,9 +1719,7 @@ async function fetchAllCryptoData() {
     }
 }
 
-/**
- * Update price display
- */
+// Update price display (existing function, modified for restore mode)
 function updatePriceDisplay(previousPrice) {
     if (state.isRestoreMode && state.restoreSnapshot) {
         updatePriceDisplayFromSnapshot(state.restoreSnapshot);
@@ -2199,6 +1739,7 @@ function updatePriceDisplay(previousPrice) {
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
 
+    // Update symbol display based on currency
     if (symbolEl) {
         symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
     }
@@ -2271,9 +1812,7 @@ function updatePriceDisplay(previousPrice) {
     }
 }
 
-/**
- * Update market microstructure metrics
- */
+// Update market microstructure metrics
 function updateMarketMicrostructure(data) {
     if (!data) return;
 
@@ -2305,9 +1844,7 @@ function updateMarketMicrostructure(data) {
     if (bidAskBarEl) bidAskBarEl.style.width = `${Math.max(0, Math.min(bidAsk, 100))}%`;
 }
 
-/**
- * Update volatility metrics
- */
+// Update volatility metrics
 function updateVolatilityMetrics(data) {
     if (!data) return;
 
@@ -2335,9 +1872,6 @@ function updateVolatilityMetrics(data) {
     if (vol24hGaugeEl) vol24hGaugeEl.style.width = `${Math.min(volatility24h * 10, 100)}%`;
 }
 
-/**
- * Update risk bars
- */
 function updateRiskBars(values) {
     const barVolatility = document.getElementById("bar-volatility");
     const barWhale = document.getElementById("bar-whale");
@@ -2350,9 +1884,7 @@ function updateRiskBars(values) {
     if (barDeviation) barDeviation.style.width = values.deviation + "%";
 }
 
-/**
- * Update risk indicators
- */
+// Update risk indicators
 function updateRiskIndicators(data) {
     if (!data) return;
 
@@ -2372,9 +1904,7 @@ function updateRiskIndicators(data) {
     });
 }
 
-/**
- * Setup price visibility watcher
- */
+// Robust watcher: show footer price when >1/3 of .price-card is hidden
 function setupPriceVisibilityWatcher() {
     const priceCard = document.querySelector('.price-card');
     const footerBox = document.getElementById('footerLivePriceBox');
@@ -2429,9 +1959,7 @@ function setupPriceVisibilityWatcher() {
     });
 }
 
-/**
- * Detect market anomalies
- */
+// Detect market anomalies
 function detectAnomalies(symbol) {
     const data = state.priceData[symbol];
     if (!data) return;
@@ -2464,9 +1992,7 @@ function detectAnomalies(symbol) {
     }
 }
 
-/**
- * Update top movers
- */
+// Update top movers
 function updateTopMovers() {
     if (state.isRestoreMode && state.restoreSnapshot) {
         updateTopMoversFromSnapshot(state.restoreSnapshot);
@@ -2491,9 +2017,7 @@ function updateTopMovers() {
     `).join('');
 }
 
-/**
- * Update connection status
- */
+// Update connection status
 function updateConnectionStatus(status) {
     const statusEl = document.getElementById('connectionStatus');
     if (!statusEl) return;
@@ -2510,11 +2034,9 @@ function updateConnectionStatus(status) {
     if (txt) txt.textContent = status === 'connected' ? 'Connected' : 'Disconnected';
 }
 
-/**
- * Update system health
- */
+// Update system health
 function updateSystemHealth() {
-    if (state.isRestoreMode) return;
+    if (state.isRestoreMode) return; // Don't update in restore mode
 
     const now = Date.now();
 
@@ -2535,9 +2057,7 @@ function updateSystemHealth() {
     if (footerConnectionEl) footerConnectionEl.textContent = connectionStatus;
 }
 
-/**
- * Add alert to alert center
- */
+// Add alert to alert center
 function addAlert(message, type = 'info') {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
@@ -2556,9 +2076,7 @@ function addAlert(message, type = 'info') {
     `).join('');
 }
 
-/**
- * Setup theme toggle
- */
+// Setup theme toggle
 function setupThemeToggle() {
     const themeBtn = document.getElementById('themeToggle');
     if (!themeBtn) return;
@@ -2571,13 +2089,7 @@ function setupThemeToggle() {
     });
 }
 
-// ========================================
-// SEARCH FUNCTIONALITY
-// ========================================
-
-/**
- * Setup search panel
- */
+// ----------------- UNIVERSAL SEARCH -----------------
 function setupSearchPanel() {
     const searchBtn = document.getElementById('searchBtn');
     const searchPanel = document.getElementById('searchPanel');
@@ -2845,9 +2357,7 @@ function setupSearchPanel() {
     renderEmpty();
 }
 
-/**
- * Select cryptocurrency from search
- */
+// Select cryptocurrency from search
 function selectCrypto(symbol) {
     const btn = document.querySelector(`[data-symbol="${symbol}"]`);
     if (btn) {
@@ -2857,13 +2367,7 @@ function selectCrypto(symbol) {
     }
 }
 
-// ========================================
-// UTILITY FUNCTIONS
-// ========================================
-
-/**
- * Format price
- */
+// Utility: Format price
 function formatPrice(price) {
     if (price === null || price === undefined || Number.isNaN(price)) return '--';
 
@@ -2897,9 +2401,7 @@ function formatPrice(price) {
     return `$${formattedPrice}`;
 }
 
-/**
- * Format volume
- */
+// Utility: Format volume
 function formatVolume(volume) {
     if (volume === null || volume === undefined || Number.isNaN(volume)) return '--';
     const v = Number(volume);
@@ -2925,19 +2427,15 @@ function formatVolume(volume) {
     }
     return `$${v.toFixed(2)}`;
 }
-
-// ========================================
-// AI SUMMARY FUNCTIONS
-// ========================================
-
-/**
- * Generate real AI summary (Hugging Face)
- */
+// ===============================
+// REAL AI SUMMARY (Hugging Face) - ENHANCED
+// ===============================
 async function generateRealAISummary(snapshot) {
     const s = snapshot.snapshot;
     const sym = s.applicationState.currentSymbol;
     const d = s.priceData[sym];
 
+    // Enhanced prompt with more context
     const prompt = `
 Summarize this crypto market briefly:
 Asset: ${s.applicationState.currentName} (${sym})
@@ -2946,12 +2444,15 @@ Price: ${d.price}
 24h Volume: ${d.volume24h}
 `;
 
+
     try {
-        const response = await fetch("https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-        });
+        const response = await fetch(
+            "https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt })
+            }
+        );
 
         if (!response.ok) {
             throw new Error(`API responded with ${response.status}`);
@@ -2959,6 +2460,7 @@ Price: ${d.price}
 
         const result = await response.json();
 
+        // Ensure we get the summary text
         if (result && result[0] && result[0].summary_text) {
             return result[0].summary_text;
         } else {
@@ -2971,32 +2473,34 @@ Price: ${d.price}
     }
 }
 
-/**
- * Close AI summary modal
- */
+// ===============================
+// CLOSE SUMMARY MODAL - FIXED
+// ===============================
 function closeAISummary() {
     const panel = document.getElementById("aiSummaryPanel");
     if (panel) {
         panel.style.display = "none";
+        // Reset dragging state
         aiPanelDragState.isDragging = false;
         document.body.classList.remove('dragging');
     }
 }
-
-/**
- * Update AI badges from snapshot
- */
+// ===============================
+// UPDATE AI BADGES FROM SNAPSHOT
+// ===============================
 function updateAIBadges(snapshot) {
     const s = snapshot.snapshot;
     const sym = s.applicationState.currentSymbol;
     const d = s.priceData[sym];
 
+    // Format timestamp
     const timestamp = new Date(s.metadata.snapshotTime);
     const timeEl = document.getElementById('aiSummaryTimestamp');
     if (timeEl) {
         timeEl.textContent = timestamp.toLocaleString();
     }
 
+    // Asset badge
     const assetBadge = document.getElementById('aiBadgeAsset');
     if (assetBadge) {
         assetBadge.innerHTML = `
@@ -3005,6 +2509,7 @@ function updateAIBadges(snapshot) {
         `;
     }
 
+    // Change badge
     const changeBadge = document.getElementById('aiBadgeChange');
     if (changeBadge && d) {
         const change = d.priceChangePercent24h;
@@ -3016,6 +2521,7 @@ function updateAIBadges(snapshot) {
         `;
     }
 
+    // Quality badge
     const qualityBadge = document.getElementById('aiBadgeQuality');
     if (qualityBadge) {
         const quality = s.metadata.snapshotQuality;
@@ -3031,6 +2537,7 @@ function updateAIBadges(snapshot) {
         `;
     }
 
+    // Source badge
     const sourceBadge = document.getElementById('aiBadgeSource');
     if (sourceBadge) {
         const wsStatus = s.metadata.websocketStatus;
@@ -3041,9 +2548,9 @@ function updateAIBadges(snapshot) {
     }
 }
 
-/**
- * Copy AI summary
- */
+// ===============================
+// FIXED COPY FUNCTION - WORKS RELIABLY
+// ===============================
 function copyAISummary() {
     const textElement = document.getElementById("aiSummaryText");
     if (!textElement) {
@@ -3057,9 +2564,11 @@ function copyAISummary() {
         return;
     }
 
+    // Try modern clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(textToCopy)
             .then(() => {
+                // Show subtle feedback without interrupting UI
                 const originalText = textElement.textContent;
                 textElement.textContent = "✓ Copied to clipboard!";
                 setTimeout(() => {
@@ -3068,16 +2577,15 @@ function copyAISummary() {
             })
             .catch(err => {
                 console.error("Clipboard API failed:", err);
+                // Fallback to old method
                 fallbackCopy(textToCopy);
             });
     } else {
+        // Fallback for older browsers
         fallbackCopy(textToCopy);
     }
 }
 
-/**
- * Fallback copy
- */
 function fallbackCopy(text) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
@@ -3105,9 +2613,9 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
-/**
- * Download AI summary
- */
+// ===============================
+// FIXED DOWNLOAD FUNCTION - WORKS RELIABLY
+// ===============================
 function downloadAISummary() {
     const textElement = document.getElementById("aiSummaryText");
     if (!textElement) {
@@ -3122,24 +2630,29 @@ function downloadAISummary() {
     }
 
     try {
+        // Create blob with proper MIME type
         const blob = new Blob([textToDownload], { type: "text/plain;charset=utf-8" });
         const url = URL.createObjectURL(blob);
 
+        // Create filename with timestamp
         const now = new Date();
         const timestamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const filename = `crypto-view-ai-summary-${timestamp}.txt`;
 
+        // Create and trigger download link
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
 
+        // Cleanup
         setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 100);
 
+        // Show subtle feedback
         const originalText = textElement.textContent;
         textElement.textContent = "✓ Downloaded!";
         setTimeout(() => {
@@ -3150,10 +2663,9 @@ function downloadAISummary() {
         console.error("Download failed:", error);
     }
 }
-
-/**
- * Share AI summary
- */
+// ===============================
+// SHARE AI SUMMARY FUNCTION
+// ===============================
 function shareAISummary() {
     const textElement = document.getElementById("aiSummaryText");
     if (!textElement) {
@@ -3167,15 +2679,18 @@ function shareAISummary() {
         return;
     }
 
+    // Create share data
     const shareData = {
         title: "Crypto View AI Summary",
         text: textToShare,
         url: window.location.href
     };
 
+    // Try Web Share API first (mobile/desktop with share support)
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
         navigator.share(shareData)
             .then(() => {
+                // Show subtle feedback
                 const originalText = textElement.textContent;
                 textElement.textContent = "✓ Shared successfully!";
                 setTimeout(() => {
@@ -3184,17 +2699,17 @@ function shareAISummary() {
             })
             .catch(err => {
                 console.log("Share cancelled or failed:", err);
+                // Fallback to clipboard
                 fallbackShare(textToShare, textElement);
             });
     } else {
+        // Fallback for browsers without Web Share API
         fallbackShare(textToShare, textElement);
     }
 }
 
-/**
- * Fallback share
- */
 function fallbackShare(text, textElement) {
+    // Try to copy to clipboard first
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text)
             .then(() => {
@@ -3207,6 +2722,7 @@ function fallbackShare(text, textElement) {
             })
             .catch(err => {
                 console.error("Clipboard failed:", err);
+                // Last resort: show text in alert
                 const originalText = textElement.textContent;
                 textElement.textContent = "Select and copy text below to share:";
                 setTimeout(() => {
@@ -3215,6 +2731,7 @@ function fallbackShare(text, textElement) {
                 alert("Select and copy the text below to share:\n\n" + text);
             });
     } else {
+        // Show text directly
         const originalText = textElement.textContent;
         textElement.textContent = "Select and copy text below to share:";
         setTimeout(() => {
@@ -3223,10 +2740,9 @@ function fallbackShare(text, textElement) {
         alert("Select and copy the text below to share:\n\n" + text);
     }
 }
-
-/**
- * Regenerate AI summary
- */
+// ===============================
+// FIXED REGENERATE FUNCTION - USES ORIGINAL SNAPSHOT
+// ===============================
 async function regenerateAISummary() {
     const textBox = document.getElementById("aiSummaryText");
     const timestampEl = document.getElementById("aiSummaryTimestamp");
@@ -3236,48 +2752,59 @@ async function regenerateAISummary() {
         return;
     }
 
+    // Store original text for restoration in case of error
     const originalText = textBox.textContent;
 
+    // Show regenerating state
     textBox.textContent = "🔄 Regenerating AI summary from snapshot...";
     timestampEl.textContent = "Regenerating...";
 
     try {
+        // Use the original snapshot from the session, NOT a new one
         const snapshot = aiSummarySession.originalSnapshot;
 
         if (!snapshot) {
             throw new Error("No original snapshot available for regeneration");
         }
 
+        // Update badges with the original snapshot data
         updateAIBadges(snapshot);
 
+        // Generate AI summary using the ORIGINAL snapshot
         const summary = await generateRealAISummary(snapshot);
 
+        // Format and display
         const formattedSummary = summary
             .replace(/\n\s*\n/g, '\n\n')
             .trim();
 
         textBox.textContent = formattedSummary;
 
+        // Update session with regenerated text
         aiSummarySession.summaryText = formattedSummary;
         aiSummarySession.generatedAt = new Date();
 
+        // Update timestamp
         timestampEl.textContent = `Regenerated: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
 
+        // Show success alert
         addAlert("AI summary regenerated from snapshot", "success");
 
     } catch (error) {
         console.error("Regeneration error:", error);
 
+        // Restore original text
         textBox.textContent = originalText;
         timestampEl.textContent = "Regeneration failed";
 
+        // Show error alert
         addAlert("Failed to regenerate AI summary", "error");
     }
 }
 
-/**
- * Setup AI panel drag
- */
+// ===============================
+// FIXED AI SUMMARY PANEL DRAG - WORKS ON MOBILE & DESKTOP
+// ===============================
 function setupAIPanelDrag() {
     const panel = document.getElementById("aiSummaryWindow");
     const header = document.getElementById("aiSummaryHeader");
@@ -3287,12 +2814,15 @@ function setupAIPanelDrag() {
         return;
     }
 
+    // Store initial position for bounds checking
     const panelRect = panel.getBoundingClientRect();
     aiPanelDragState.currentX = panelRect.left;
     aiPanelDragState.currentY = panelRect.top;
 
+    // Mouse events for desktop
     header.addEventListener("mousedown", startDrag);
 
+    // Touch events for mobile
     header.addEventListener("touchstart", (e) => {
         e.preventDefault();
         if (e.touches.length === 1) {
@@ -3309,12 +2839,15 @@ function setupAIPanelDrag() {
         e.preventDefault();
         aiPanelDragState.isDragging = true;
 
+        // Get current panel position
         const panelRect = panel.getBoundingClientRect();
         aiPanelDragState.offsetX = e.clientX - panelRect.left;
         aiPanelDragState.offsetY = e.clientY - panelRect.top;
 
+        // Prevent text selection during drag
         document.body.classList.add('dragging');
 
+        // Add event listeners for move and end
         document.addEventListener("mousemove", handleDragMove);
         document.addEventListener("touchmove", handleTouchMove, { passive: false });
         document.addEventListener("mouseup", stopDrag);
@@ -3340,16 +2873,20 @@ function setupAIPanelDrag() {
         const panelWidth = panel.offsetWidth;
         const panelHeight = panel.offsetHeight;
 
+        // Calculate new position
         let newX = clientX - aiPanelDragState.offsetX;
         let newY = clientY - aiPanelDragState.offsetY;
 
+        // Keep panel within viewport bounds
         newX = Math.max(0, Math.min(newX, viewportWidth - panelWidth));
         newY = Math.max(0, Math.min(newY, viewportHeight - panelHeight));
 
+        // Apply new position
         panel.style.left = `${newX}px`;
         panel.style.top = `${newY}px`;
-        panel.style.transform = "none";
+        panel.style.transform = "none"; // Remove center transform
 
+        // Store current position
         aiPanelDragState.currentX = newX;
         aiPanelDragState.currentY = newY;
     }
@@ -3358,6 +2895,7 @@ function setupAIPanelDrag() {
         aiPanelDragState.isDragging = false;
         document.body.classList.remove('dragging');
 
+        // Remove event listeners
         document.removeEventListener("mousemove", handleDragMove);
         document.removeEventListener("touchmove", handleTouchMove);
         document.removeEventListener("mouseup", stopDrag);
@@ -3365,9 +2903,9 @@ function setupAIPanelDrag() {
     }
 }
 
-/**
- * AI summary button handler
- */
+// ===============================
+// ENHANCED AI SUMMARY BUTTON HANDLER - FIXED FOR JSRE
+// ===============================
 document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     const panel = document.getElementById("aiSummaryPanel");
     const textBox = document.getElementById("aiSummaryText");
@@ -3378,6 +2916,7 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         return;
     }
 
+    // Show loading state
     panel.style.display = "block";
     textBox.textContent = "Analyzing market data and generating insights...";
     if (timestampEl) {
@@ -3385,43 +2924,55 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     }
 
     try {
+        // Determine which snapshot to use
         let snapshot;
         if (state.isRestoreMode && state.restoreSnapshot) {
+            // JSRE MODE: Use restored snapshot
             snapshot = state.restoreSnapshot;
             aiSummarySession.isJSREMode = true;
             console.log("[AI] Using JSRE restored snapshot");
         } else {
+            // LIVE MODE: Generate new snapshot
             snapshot = generateSnapshot();
             aiSummarySession.isJSREMode = false;
             console.log("[AI] Using live snapshot");
         }
 
-        aiSummarySession.originalSnapshot = JSON.parse(JSON.stringify(snapshot));
+        // Store the ORIGINAL snapshot for regeneration
+        aiSummarySession.originalSnapshot = JSON.parse(JSON.stringify(snapshot)); // Deep clone
         aiSummarySession.generatedAt = new Date();
 
+        // Update badges immediately
         updateAIBadges(snapshot);
 
+        // Generate AI summary
         const summary = await generateRealAISummary(snapshot);
 
+        // Format the summary
         const formattedSummary = summary
             .replace(/\n\s*\n/g, '\n\n')
             .trim();
 
+        // Yield to browser, then animate
         setTimeout(() => {
             showTextWordByWord(textBox, formattedSummary);
         }, 0);
 
+
+        // Update timestamp
         if (timestampEl) {
             const timestamp = aiSummarySession.generatedAt;
             timestampEl.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
+        // Log success
         console.log("[AI] Summary generated successfully");
 
     } catch (err) {
         console.error("AI summary error:", err);
         textBox.textContent = "⚠️ AI service is currently unavailable. Please try again later.\n\nYou can still view the snapshot data in the badges above.";
 
+        // Show snapshot data as fallback
         try {
             const snapshot = state.isRestoreMode && state.restoreSnapshot ?
                 state.restoreSnapshot :
@@ -3434,9 +2985,9 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     }
 });
 
-/**
- * Setup FAB auto discovery
- */
+// Update the setupFabAutoDiscovery function in app.js
+// Replace the existing function with this improved version:
+
 (function setupFabAutoDiscovery() {
     const fabStack = document.querySelector('.fab-stack');
     const mainFab = document.querySelector('.fab.main');
@@ -3461,6 +3012,7 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
 
     function closeFab() {
         fabStack.classList.remove('auto-open');
+        // Only rotate back if not manually hovering
         if (!fabStack.matches(':hover')) {
             rotateMainFab(false);
         }
@@ -3486,19 +3038,29 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         timers.push(t);
     }
 
+    /* -----------------------------------
+       MANUAL HOVER ROTATION
+    ----------------------------------- */
     fabStack.addEventListener('mouseenter', () => {
         rotateMainFab(true);
     });
 
     fabStack.addEventListener('mouseleave', () => {
+        // Only rotate back if not in auto-open mode
         if (!fabStack.classList.contains('auto-open')) {
             rotateMainFab(false);
         }
     });
 
+    /* -----------------------------------
+       PHASE 1: 0–10s (Always visible)
+    ----------------------------------- */
     openFab();
     schedule(10000, closeFab);
 
+    /* -----------------------------------
+       PHASE 2: 11–25s (Every 5s)
+    ----------------------------------- */
     for (let t = 10000; t <= 20000; t += 5000) {
         schedule(t, () => {
             openFab();
@@ -3506,6 +3068,9 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         });
     }
 
+    /* -----------------------------------
+       PHASE 3: 26–55s (Every 10s)
+    ----------------------------------- */
     for (let t = 20000; t <= 65000; t += 15000) {
         schedule(t, () => {
             openFab();
@@ -3513,10 +3078,17 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         });
     }
 
+    /* -----------------------------------
+       FINAL HARD STOP (after 55s)
+    ----------------------------------- */
     schedule(56000, stopAutoLoop);
 
+    /* -----------------------------------
+       USER INTERACTION OVERRIDES AUTO MODE
+    ----------------------------------- */
     mainFab.addEventListener('click', () => {
         stopAutoLoop();
+        // Toggle on click if not in auto mode
         if (!autoLoopActive) {
             if (fabStack.classList.contains('auto-open')) {
                 closeFab();
@@ -3526,31 +3098,26 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         }
     });
 })();
+// =======================================
+// JSRE OVERLAY FUNCTIONS (Unchanged)
+// =======================================
 
-// ========================================
-// JSRE OVERLAY FUNCTIONS
-// ========================================
-
-/**
- * Initialize JSRE overlay
- */
 function initJSREOverlay() {
     JSRE.overlay = document.getElementById("jsreOverlay");
     JSRE.progress = document.getElementById("jsreProgress");
     JSRE.title = document.getElementById("jsreTitle");
     JSRE.subtitle = document.getElementById("jsreSubtitle");
 
+    // Ensure elements exist
     if (!JSRE.overlay || !JSRE.progress || !JSRE.title || !JSRE.subtitle) {
         console.error("[JSRE] Failed to initialize overlay elements");
     }
 }
 
-/**
- * Show JSRE overlay
- */
 function showJSRE() {
     console.log("[JSRE] Showing overlay");
 
+    // Ensure overlay is properly initialized
     if (!JSRE.overlay || !JSRE.progress || !JSRE.title || !JSRE.subtitle) {
         console.error("[JSRE] Overlay not properly initialized");
         return;
@@ -3560,9 +3127,11 @@ function showJSRE() {
     JSRE.progress.style.strokeDashoffset = JSRE.circumference;
     JSRE.progress.style.stroke = "var(--color-primary)";
 
+    // 🔥 CRITICAL FIX: Reset title and subtitle to default values
     JSRE.title.textContent = "JSON State Restore Engine";
     JSRE.subtitle.textContent = "Initializing…";
 
+    // Remove any error class if present
     const card = JSRE.overlay.querySelector(".jsre-card");
     if (card) {
         card.classList.remove("jsre-error");
@@ -3571,9 +3140,6 @@ function showJSRE() {
     JSRE.overlay.classList.remove("hidden");
 }
 
-/**
- * Advance JSRE progress
- */
 function advanceJSRE(subtitle) {
     console.log(`[JSRE] Phase ${JSRE.phase + 1}: ${subtitle}`);
     JSRE.phase++;
@@ -3587,9 +3153,6 @@ function advanceJSRE(subtitle) {
     }
 }
 
-/**
- * Show JSRE error
- */
 function jsreError() {
     console.error("[JSRE] Validation failed - wrong file detected");
 
@@ -3598,6 +3161,7 @@ function jsreError() {
         return;
     }
 
+    // Visual error state
     JSRE.progress.style.stroke = "var(--color-error)";
     JSRE.progress.style.strokeDashoffset = 0;
 
@@ -3609,6 +3173,7 @@ function jsreError() {
         card.classList.add("jsre-error");
     }
 
+    // After animation → redirect to modal
     setTimeout(() => {
         if (JSRE.overlay) {
             JSRE.overlay.classList.add("hidden");
@@ -3618,6 +3183,7 @@ function jsreError() {
             card.classList.remove("jsre-error");
         }
 
+        // 🔥 IMPORTANT: Reset the title and subtitle for next upload
         if (JSRE.title) {
             JSRE.title.textContent = "JSON State Restore Engine";
         }
@@ -3640,12 +3206,9 @@ function jsreError() {
             autoAction: () => {},
             timerFormat: "close"
         });
-    }, 1200);
+    }, 1200); // allows shake + color settle
 }
 
-/**
- * Show text word by word
- */
 function showTextWordByWord(element, text) {
     element.textContent = "";
 
@@ -3659,7 +3222,7 @@ function showTextWordByWord(element, text) {
         } else {
             clearInterval(interval);
         }
-    }, 40);
+    }, 40); // speed (ms)
 }
 
 // Make selectCrypto global
