@@ -2223,6 +2223,17 @@ body {
     }
 }
 
+.header-home-link {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.header-home-link:hover .header-title {
+    text-decoration: underline;
+}
+
 
 /* ========================================
    EXPORT READY POPUP
