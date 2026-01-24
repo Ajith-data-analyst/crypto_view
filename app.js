@@ -1,3 +1,40 @@
+// Changes Made:
+// 1. Added staged loader helper function
+// 2. Updated currency toggle with staged loader
+// 3. Added AI Summary Share button functionality
+// 4. Added export loaders and ready popup
+// 5. Added Share Environment FAB with loader
+// 6. Updated share modal layout and hover behavior
+// 7. Added shared link opening behavior
+// 8. Added exit restore mode in shareable link context
+// 9. Updated JSON decision modal for consistency
+
+// Debug flag for share feature
+const SHARE_DEBUG = true;
+
+// Share Environment State
+const shareState = {
+    modal: null,
+    qrCode: null,
+    autoCloseTimer: null,
+    restoredFromLink: false
+};
+
+// Export State
+const exportState = {
+    currentExportType: null,
+    currentExportSnapshot: null,
+    readyPopupTimer: null,
+    readyPopupCountdown: null
+};
+
+// Shared Link State
+const sharedLinkState = {
+    popup: null,
+    popupTimer: null,
+    popupCountdown: null
+};
+
 // Global State
 const state = {
     currentSymbol: 'BTC',
@@ -14,9 +51,11 @@ const state = {
     lastLivePrice: null,
     currency: 'USDT',
     usdtToInrRate: 83.5,
-    isRestoreMode: false, // New: Track if we're in restore mode
-    restoreSnapshot: null // New: Store the active snapshot in restore mode
+    isRestoreMode: false,
+    restoreSnapshot: null,
+    restoredFromLink: false
 };
+
 const JSRE = {
     overlay: null,
     progress: null,
@@ -26,16 +65,16 @@ const JSRE = {
     phase: 0
 };
 
-// AI Summary Session Management - FIXED
+// AI Summary Session Management
 let aiSummarySession = {
     snapshot: null,
     summaryText: "",
     generatedAt: null,
-    originalSnapshot: null, // Store the original snapshot for regenerate
+    originalSnapshot: null,
     isJSREMode: false
 };
 
-// Drag State for AI Panel - FIXED
+// Drag State for AI Panel
 let aiPanelDragState = {
     isDragging: false,
     offsetX: 0,
@@ -60,9 +99,1130 @@ const cryptoMapping = {
 // Application version
 const APP_VERSION = '1.0';
 
-// Initialize application
+// ========================================
+// STAGED LOADER HELPER
+// ========================================
+
+/**
+ * Staged loader helper function
+ * @param {Object} options - {stages: string[], totalMs: number, title: string, tagline: string}
+ * @returns {Promise} resolves when loader completes
+ */
+function showStagedLoader(options) {
+    const { stages, totalMs, title, tagline } = options;
+    const stageCount = stages.length;
+    const stageDuration = totalMs / stageCount;
+
+    // Use existing JSRE overlay
+    if (JSRE.overlay && JSRE.title && JSRE.subtitle && JSRE.progress) {
+        JSRE.overlay.classList.remove('hidden');
+        JSRE.title.textContent = title;
+        JSRE.subtitle.textContent = `${tagline} — ${stages[0]} (1/${stageCount})`;
+        JSRE.progress.style.strokeDashoffset = JSRE.circumference;
+        JSRE.progress.style.stroke = "var(--color-primary)";
+
+        let currentStage = 0;
+
+        return new Promise((resolve) => {
+            const advanceStage = () => {
+                currentStage++;
+                if (currentStage < stageCount) {
+                    const progressOffset = JSRE.circumference - (JSRE.circumference / stageCount) * currentStage;
+                    JSRE.progress.style.strokeDashoffset = progressOffset;
+                    JSRE.subtitle.textContent = `${tagline} — ${stages[currentStage]} (${currentStage + 1}/${stageCount})`;
+                    setTimeout(advanceStage, stageDuration);
+                } else {
+                    // Complete
+                    JSRE.progress.style.strokeDashoffset = 0;
+                    setTimeout(() => {
+                        JSRE.overlay.classList.add('hidden');
+                        resolve();
+                    }, stageDuration);
+                }
+            };
+            setTimeout(advanceStage, stageDuration);
+        });
+    } else {
+        // Fallback: simple setTimeout
+        console.log(`[STAGED LOADER] ${title}: ${stages.join(' → ')}`);
+        return new Promise(resolve => setTimeout(resolve, totalMs));
+    }
+}
+// STEP 2.1 — Create TinyURL
+async function createTinyUrl(longUrl) {
+    const response = await fetch(
+        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`
+    );
+    return response.text();
+}
+
+// STEP 2.2 — Create QR image URL
+function createQrImageUrl(shortUrl) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shortUrl)}`;
+}
+
+// ========================================
+// SHARE ENVIRONMENT FUNCTIONS - FIXED & WORKING
+// ========================================
+
+/**
+ * Initialize the share environment modal
+ */
+function initShareModal() {
+    console.log('[SHARE] Initializing share modal...');
+
+    shareState.modal = document.getElementById('shareEnvModal');
+
+    if (!shareState.modal) {
+        console.error('[SHARE] Share modal not found in DOM');
+        return;
+    }
+
+    console.log('[SHARE] Modal found');
+
+    // Setup close buttons
+    const closeBtns = shareState.modal.querySelectorAll('.share-modal-close');
+    closeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeShareModal();
+        });
+    });
+
+    // Setup copy button
+    const copyBtn = shareState.modal.querySelector('.share-copy-btn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            copyShareLink();
+        });
+    }
+
+    // Setup share button
+    const shareBtn = shareState.modal.querySelector('.share-share-btn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            shareViaNative();
+        });
+    }
+
+    // Setup hover actions
+    const copyHoverAction = shareState.modal.querySelector('.share-link-hover-action[data-action="copy"]');
+    if (copyHoverAction) {
+        copyHoverAction.addEventListener('click', copyShareLink);
+    }
+
+    const shareHoverAction = shareState.modal.querySelector('.share-link-hover-action[data-action="share"]');
+    if (shareHoverAction) {
+        shareHoverAction.addEventListener('click', shareViaNative);
+    }
+
+    // Setup QR hover actions
+    const qrCopyAction = shareState.modal.querySelector('.qr-hover-action[data-action="copy"]');
+    if (qrCopyAction) {
+        qrCopyAction.addEventListener('click', async() => {
+            const qrImage = shareState.modal.querySelector('#shareQrImage');
+            if (qrImage) {
+                try {
+                    const blob = await fetch(qrImage.src).then(r => r.blob());
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ 'image/png': blob })
+                    ]);
+                    addAlert('QR code copied to clipboard', 'success');
+                } catch (error) {
+                    console.error('Failed to copy QR:', error);
+                    addAlert('Failed to copy QR code', 'error');
+                }
+            }
+        });
+    }
+
+    const qrShareAction = shareState.modal.querySelector('.qr-hover-action[data-action="share"]');
+    if (qrShareAction) {
+        qrShareAction.addEventListener('click', async() => {
+            const qrImage = shareState.modal.querySelector('#shareQrImage');
+            if (qrImage && navigator.share) {
+                try {
+                    const blob = await fetch(qrImage.src).then(r => r.blob());
+                    const file = new File([blob], 'qr-code.png', { type: 'image/png' });
+                    await navigator.share({
+                        title: 'Crypto View QR Code',
+                        text: 'Scan this QR code to view the crypto environment',
+                        files: [file]
+                    });
+                } catch (error) {
+                    console.error('Failed to share QR:', error);
+                }
+            }
+        });
+    }
+
+    const qrDownloadAction = shareState.modal.querySelector('.qr-hover-action[data-action="download"]');
+    if (qrDownloadAction) {
+        qrDownloadAction.addEventListener('click', () => {
+            const qrImage = shareState.modal.querySelector('#shareQrImage');
+            if (qrImage) {
+                const a = document.createElement('a');
+                a.href = qrImage.src;
+                a.download = 'crypto-view-qr.png';
+                a.click();
+                addAlert('QR code downloaded', 'success');
+            }
+        });
+    }
+
+    // Close modal when clicking on backdrop
+    const backdrop = shareState.modal.querySelector('.share-modal-backdrop');
+    if (backdrop) {
+        backdrop.addEventListener('click', closeShareModal);
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !shareState.modal.classList.contains('hidden')) {
+            closeShareModal();
+        }
+    });
+
+    // Select link text on click
+    const linkInput = shareState.modal.querySelector('.share-link-input');
+    if (linkInput) {
+        linkInput.addEventListener('click', function() {
+            this.select();
+        });
+    }
+
+    // Setup exit restore mode button in share modal
+    const exitRestoreBtn = shareState.modal.querySelector('#shareExitRestoreBtn');
+    if (exitRestoreBtn) {
+        exitRestoreBtn.addEventListener('click', exitRestoreMode);
+    }
+
+    console.log('[SHARE] Modal initialized successfully');
+}
+
+/**
+ * Strip sensitive fields from snapshot before sharing
+ */
+function shareStripSensitive(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return snapshot;
+
+    // Create a deep copy to avoid mutating original
+    const cleaned = JSON.parse(JSON.stringify(snapshot));
+
+    // Remove sensitive fields
+    if (cleaned.snapshot && cleaned.snapshot.metadata) {
+        // Keep only last 3 alerts for context
+        if (cleaned.snapshot.metadata.alerts && Array.isArray(cleaned.snapshot.metadata.alerts)) {
+            cleaned.snapshot.metadata.alerts = cleaned.snapshot.metadata.alerts.slice(0, 3);
+        }
+
+        // Add share metadata
+        cleaned.snapshot.metadata.sharedBy = 'client';
+        cleaned.snapshot.metadata.shareCreatedAt = new Date().toISOString();
+        cleaned.snapshot.metadata.shareVersion = '1.0';
+    }
+
+    return cleaned;
+}
+
+/**
+ * Encode snapshot to URL-safe compressed string
+ */
+function shareEncodeSnapshot(snapshot) {
+    try {
+        const jsonString = JSON.stringify(snapshot);
+        if (SHARE_DEBUG) console.log('[SHARE] Original JSON size:', jsonString.length);
+
+        const encoded = LZString.compressToEncodedURIComponent(jsonString);
+        if (SHARE_DEBUG) console.log('[SHARE] Encoded size:', encoded.length);
+
+        return encoded;
+    } catch (error) {
+        console.error('[SHARE] Encoding failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Decode snapshot from compressed string
+ */
+function shareDecodeSnapshot(encoded) {
+    try {
+        const jsonString = LZString.decompressFromEncodedURIComponent(encoded);
+        if (!jsonString) {
+            throw new Error('Decompression returned null');
+        }
+
+        const snapshot = JSON.parse(jsonString);
+
+        // Basic validation
+        if (!snapshot.version || !snapshot.snapshot) {
+            throw new Error('Invalid snapshot structure');
+        }
+
+        return snapshot;
+    } catch (error) {
+        console.error('[SHARE] Decoding failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Generate shareable environment link
+ */
+async function generateShareableEnvironmentLink() {
+    try {
+        console.log('[SHARE] Generating shareable link...');
+
+        // Generate current snapshot
+        const snapshot = generateSnapshot();
+
+        // Strip sensitive data
+        const cleanedSnapshot = shareStripSensitive(snapshot);
+
+        // Encode to URL-safe string
+        const encoded = shareEncodeSnapshot(cleanedSnapshot);
+
+        if (!encoded) {
+            throw new Error('Failed to encode snapshot');
+        }
+
+        // Check URL length limit
+        if (encoded.length > 15000) {
+            addAlert('Snapshot too large for URL sharing. Please use JSON export instead.', 'warning');
+            return;
+        }
+
+        // Build shareable URL
+        const shareUrl = `${window.location.origin}${window.location.pathname}#env=${encoded}`;
+        const tinyUrl = await createTinyUrl(shareUrl);
+        const qrImageUrl = createQrImageUrl(tinyUrl);
+
+        openShareModal({
+            fullUrl: shareUrl,
+            tinyUrl: tinyUrl,
+            qrImageUrl: qrImageUrl
+        });
+
+        console.log('[SHARE] Share URL generated');
+
+        // Open share modal
+        openShareModal(shareUrl, cleanedSnapshot);
+
+    } catch (error) {
+        console.error('[SHARE] Failed to generate share link:', error);
+        addAlert('Failed to generate share link. Please try again.', 'error');
+    }
+}
+
+/**
+ * Open share modal with link and snapshot data
+ */
+function openShareModal(link, snapshot, options = {}) {
+    const { autoCloseMs = null } = options;
+
+    if (!shareState.modal) {
+        console.error('[SHARE] Modal not initialized');
+        initShareModal();
+        if (!shareState.modal) return;
+    }
+
+    // Clear any existing auto-close timer
+    if (shareState.autoCloseTimer) {
+        clearTimeout(shareState.autoCloseTimer);
+        shareState.autoCloseTimer = null;
+    }
+
+    // Set link in input
+    const linkInput = shareState.modal.querySelector('.share-link-input');
+    if (linkInput) {
+        linkInput.value = link;
+    }
+
+    // Generate QR code
+    const qrContainer = shareState.modal.querySelector('#share-qr');
+    if (qrContainer) {
+        qrContainer.innerHTML = '<small>Generating QR…</small>';
+
+        // Create QR code
+        qrContainer.innerHTML = '';
+        // Clear old QR
+        qrContainer.innerHTML = '';
+
+        // Wait until modal is fully rendered
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                new QRCode(qrContainer, {
+                    text: link,
+                    width: 180,
+                    height: 180,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            });
+        });
+
+
+        // Add image for easier download/copy
+        setTimeout(() => {
+            const qrImg = qrContainer.querySelector('img');
+            if (qrImg) {
+                qrImg.id = 'shareQrImage';
+                qrImg.alt = 'QR Code';
+            }
+        }, 100);
+    }
+
+    // Update stats from snapshot
+    updateShareModalStats(snapshot);
+
+    // Show/hide exit restore button
+    const exitRestoreContainer = shareState.modal.querySelector('#share-exit-restore-container');
+    if (exitRestoreContainer) {
+        exitRestoreContainer.style.display = state.restoredFromLink ? 'block' : 'none';
+    }
+
+    // Show modal
+    shareState.modal.classList.remove('hidden');
+
+    // Set auto-close timer if specified
+    if (autoCloseMs && autoCloseMs > 0) {
+        shareState.autoCloseTimer = setTimeout(() => {
+            closeShareModal();
+            addAlert('Share environment modal closed automatically', 'info');
+        }, autoCloseMs);
+    }
+
+    // Update modal title based on context
+    const modalTitle = shareState.modal.querySelector('.share-modal-title');
+    if (modalTitle) {
+        if (state.restoredFromLink) {
+            modalTitle.textContent = 'Crypto Statistic Environment (Restored)';
+        } else {
+            modalTitle.textContent = 'Crypto Statistic Environment';
+        }
+    }
+
+    console.log('[SHARE] Modal opened successfully');
+}
+
+/**
+ * Update modal stats from snapshot data
+ */
+function updateShareModalStats(snapshot) {
+    if (!snapshot || !snapshot.snapshot) return;
+
+    const applicationState = snapshot.snapshot.applicationState || {};
+    const metadata = snapshot.snapshot.metadata || {};
+    const priceDataMap = snapshot.snapshot.priceData || {};
+    const analyticsMap = snapshot.snapshot.derivedAnalytics || {};
+
+    const currentSymbol = applicationState.currentSymbol || 'BTC';
+    const priceData = priceDataMap[currentSymbol];
+    const analytics = analyticsMap[currentSymbol];
+
+    // Format price
+    let formattedPrice = '--';
+    if (priceData && priceData.price) {
+        formattedPrice = formatPrice(priceData.price);
+    }
+
+    // Update stats elements
+    const stats = {
+        'share-stat-asset': (currentSymbol + '/' + (applicationState.currency || 'USDT')),
+        'share-stat-price': formattedPrice,
+        'share-stat-volatility': analytics ?
+            ((analytics.volatility24h != null ?
+                analytics.volatility24h.toFixed(2) :
+                '--') + '%') : '--%',
+        'share-stat-imbalance': analytics ?
+            ((analytics.bidAskImbalance != null ?
+                analytics.bidAskImbalance.toFixed(1) :
+                '--') + '%') : '--%',
+        'share-stat-timestamp': metadata.snapshotTime ?
+            new Date(metadata.snapshotTime).toLocaleString() : '--',
+        'share-stat-quality': metadata.snapshotQuality || '--'
+    };
+
+    // Update each stat element
+    Object.entries(stats).forEach(function([id, value]) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+
+            // Add quality class if quality element
+            if (id === 'share-stat-quality') {
+                element.className = 'share-stat-value';
+                const quality = metadata.snapshotQuality;
+                if (quality === 'FRESH') element.classList.add('share-stat-fresh');
+                else if (quality === 'RECENT') element.classList.add('share-stat-recent');
+                else if (quality === 'STALE') element.classList.add('share-stat-stale');
+            }
+        }
+    });
+}
+
+/**
+ * Close the share modal
+ */
+function closeShareModal() {
+    if (!shareState.modal) return;
+
+    shareState.modal.classList.add('hidden');
+
+    // Clear auto-close timer
+    if (shareState.autoCloseTimer) {
+        clearTimeout(shareState.autoCloseTimer);
+        shareState.autoCloseTimer = null;
+    }
+
+    // Reset restored flag
+    state.restoredFromLink = false;
+}
+
+/**
+ * Copy share link to clipboard
+ */
+function copyShareLink() {
+    const linkInput = shareState.modal.querySelector('.share-link-input');
+    if (!linkInput) return;
+
+    const link = linkInput.value;
+
+    if (!link || link.trim() === '') {
+        addAlert('No link to copy', 'warning');
+        return;
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(link)
+            .then(() => {
+                addAlert('Share link copied to clipboard!', 'success');
+
+                // Show feedback on button
+                const copyBtn = shareState.modal.querySelector('.share-copy-btn');
+                if (copyBtn) {
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✓ Copied!';
+                    copyBtn.style.background = 'var(--color-success)';
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.background = '';
+                    }, 1500);
+                }
+            })
+            .catch(err => {
+                console.error('[SHARE] Clipboard write failed:', err);
+                fallbackCopyText(link);
+            });
+    } else {
+        fallbackCopyText(link);
+    }
+}
+
+/**
+ * Fallback copy method for older browsers
+ */
+function fallbackCopyText(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            addAlert('Share link copied to clipboard!', 'success');
+        } else {
+            addAlert('Failed to copy link. Please copy manually.', 'error');
+        }
+    } catch (err) {
+        console.error('[SHARE] Fallback copy failed:', err);
+        addAlert('Failed to copy link. Please copy manually.', 'error');
+    }
+
+    document.body.removeChild(textArea);
+}
+
+/**
+ * Share via native share API if available
+ */
+function shareViaNative() {
+    const linkInput = shareState.modal.querySelector('.share-link-input');
+    if (!linkInput) return;
+
+    const link = linkInput.value;
+    const snapshot = generateSnapshot();
+    let assetName = 'Crypto';
+
+    if (
+        snapshot &&
+        snapshot.snapshot &&
+        snapshot.snapshot.applicationState &&
+        snapshot.snapshot.applicationState.currentName
+    ) {
+        assetName = snapshot.snapshot.applicationState.currentName;
+    }
+
+    if (navigator.share) {
+        navigator.share({
+                title: `Crypto View - ${assetName} Environment`,
+                text: `Check out this ${assetName} market environment snapshot`,
+                url: link
+            })
+            .then(() => {
+                addAlert('Shared successfully!', 'success');
+            })
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    console.error('[SHARE] Native share failed:', err);
+                    copyShareLink();
+                }
+            });
+    } else {
+        copyShareLink();
+    }
+}
+
+// ========================================
+// SHARE ENVIRONMENT FAB
+// ========================================
+
+/**
+ * Setup Share Environment FAB
+ */
+function setupShareEnvFab() {
+    const shareEnvFab = document.getElementById('shareEnvFab');
+    if (!shareEnvFab) return;
+
+    shareEnvFab.addEventListener('click', async() => {
+        await showStagedLoader({
+            stages: ['Preparing snapshot', 'Compressing data', 'Generating QR code', 'Finalizing'],
+            totalMs: 8000,
+            title: 'Preparing share environment',
+            tagline: 'Generating shareable link'
+        });
+        generateShareableEnvironmentLink();
+    });
+}
+
+// ========================================
+// CURRENCY TOGGLE WITH LOADER
+// ========================================
+
+/**
+ * Setup currency toggle with staged loader
+ */
+function setupCurrencyToggle() {
+    const currencyBtn = document.getElementById('currencyToggle');
+    if (!currencyBtn) return;
+
+    const icon = currencyBtn.querySelector('.fab-icon');
+
+    if (icon) {
+        icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
+    }
+
+    function playToggleAnimation() {
+        currencyBtn.classList.remove('currency-toggle-pop');
+        void currencyBtn.offsetWidth;
+        currencyBtn.classList.add('currency-toggle-pop');
+        setTimeout(() => {
+            currencyBtn.classList.remove('currency-toggle-pop');
+        }, 200);
+    }
+
+    currencyBtn.addEventListener('click', async() => {
+        if (state.isRestoreMode && state.restoreSnapshot) {
+            const symbol = state.currentSymbol;
+            const currencyData = state.restoreSnapshot.snapshot.currencyContext.prices[symbol];
+            if (!currencyData) {
+                addAlert("Currency data not available in snapshot", "warning");
+                return;
+            }
+            // Fast toggle for restore mode
+            state.currency = state.currency === 'USDT' ? 'INR' : 'USDT';
+            icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
+            playToggleAnimation();
+            updatePriceDisplayFromSnapshot(state.restoreSnapshot);
+            addAlert(`Currency switched to ${state.currency}`, 'info');
+            return;
+        }
+
+        // Determine which currency we're switching to
+        const targetCurrency = state.currency === 'USDT' ? 'INR' : 'USDT';
+        const isToINR = targetCurrency === 'INR';
+
+        // Show staged loader
+        const stages = isToINR ? ['Connecting to currency feed', 'Initializing conversion layer', 'Ready to use'] : ['Disconnecting local currency feed', 'Contacting Binance market data', 'Ready to use'];
+
+        const tagline = isToINR ?
+            'Switching display to INR — live conversion in progress' :
+            'Switching display to USDT — syncing with exchange';
+
+        await showStagedLoader({
+            stages: stages,
+            totalMs: 6000,
+            title: 'Switching currency',
+            tagline: tagline
+        });
+
+        // Apply currency switch
+        state.currency = targetCurrency;
+
+        if (icon) {
+            icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
+        }
+
+        playToggleAnimation();
+        updatePriceDisplay();
+        addAlert(`Currency switched to ${state.currency}`, 'info');
+    });
+}
+
+// ========================================
+// AI SUMMARY SHARE FUNCTION
+// ========================================
+
+/**
+ * Share AI summary text
+ */
+function shareAISummary() {
+    const textElement = document.getElementById('aiSummaryText');
+    if (!textElement) {
+        console.error('AI summary text element not found');
+        return;
+    }
+
+    const textToShare = textElement.innerText || textElement.textContent;
+    if (!textToShare || textToShare.trim() === '') {
+        console.warn('No text to share');
+        return;
+    }
+
+    const shareData = {
+        title: 'Crypto View AI Summary',
+        text: textToShare,
+        url: window.location.href
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        navigator.share(shareData)
+            .then(() => {
+                addAlert('AI summary shared successfully!', 'success');
+            })
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    console.error('Native share failed:', err);
+                    // Fallback to clipboard
+                    copyAISummary();
+                }
+            });
+    } else {
+        // Fallback to clipboard
+        copyAISummary();
+    }
+}
+
+// ========================================
+// EXPORT LOADERS AND READY POPUP (NO AUTO-CLOSE)
+// ========================================
+
+/**
+ * Show export ready popup
+ */
+function showReadyExportPopup(type, snapshot) {
+    const popup = document.getElementById('exportReadyPopup');
+    if (!popup) return;
+
+    // Clear any existing timers (defensive cleanup)
+    if (exportState.readyPopupTimer) {
+        clearTimeout(exportState.readyPopupTimer);
+        exportState.readyPopupTimer = null;
+    }
+    if (exportState.readyPopupCountdown) {
+        clearInterval(exportState.readyPopupCountdown);
+        exportState.readyPopupCountdown = null;
+    }
+
+    // Set export state
+    exportState.currentExportType = type;
+    exportState.currentExportSnapshot = snapshot;
+
+    // Update title
+    const title = popup.querySelector('#exportReadyTitle');
+    if (title) {
+        title.textContent = `Ready to Export ${type.toUpperCase()}`;
+    }
+
+    // OPTIONAL: reset timer UI to a static state
+    const timerBar = popup.querySelector('.export-ready-progress');
+    const countdown = popup.querySelector('.export-ready-countdown');
+    if (timerBar) timerBar.style.width = '100%';
+    if (countdown) countdown.textContent = '';
+
+    // Setup action buttons
+    const actions = popup.querySelectorAll('.export-ready-action');
+    actions.forEach(btn => {
+        btn.onclick = function() {
+            const action = this.dataset.action;
+            handleExportReadyAction(action);
+        };
+    });
+
+    // Setup close button
+    const closeBtn = popup.querySelector('.export-ready-close');
+    if (closeBtn) {
+        closeBtn.onclick = closeExportReadyPopup;
+    }
+
+    // Show popup
+    popup.classList.remove('hidden');
+}
+
+
+/**
+ * Handle export ready action
+ */
+function handleExportReadyAction(action) {
+    const { currentExportType, currentExportSnapshot } = exportState;
+
+    switch (action) {
+        case 'copy':
+            if (currentExportType === 'pdf') {
+                navigator.clipboard.writeText('PDF export is ready. Download to view.');
+                addAlert('PDF download instructions copied', 'info');
+            } else {
+                const jsonString = JSON.stringify(currentExportSnapshot, null, 2);
+                navigator.clipboard.writeText(jsonString);
+                addAlert('JSON copied to clipboard', 'success');
+            }
+            break;
+
+        case 'share':
+            if (currentExportType === 'pdf') {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Crypto View PDF Export',
+                        text: 'Check out this PDF export from Crypto View',
+                        url: window.location.href
+                    });
+                } else {
+                    addAlert('Sharing not supported on this device', 'warning');
+                }
+            } else {
+                const jsonString = JSON.stringify(currentExportSnapshot, null, 2);
+                const blob = new Blob([jsonString], { type: 'application/json' });
+                const file = new File([blob], 'crypto-view-snapshot.json', { type: 'application/json' });
+
+                if (navigator.share && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        title: 'Crypto View JSON Export',
+                        files: [file]
+                    });
+                } else {
+                    navigator.clipboard.writeText(jsonString);
+                    addAlert('JSON copied to clipboard (share not available)', 'success');
+                }
+            }
+            break;
+
+        case 'download':
+            closeExportReadyPopup();
+            if (currentExportType === 'pdf') {
+                exportToPDF(currentExportSnapshot);
+            } else if (currentExportType === 'json') {
+                exportToJSON(currentExportSnapshot);
+            } else if (currentExportType === 'both') {
+                exportToPDF(currentExportSnapshot);
+                setTimeout(() => exportToJSON(currentExportSnapshot), 500);
+            }
+            break;
+    }
+}
+
+/**
+ * Close export ready popup
+ */
+function closeExportReadyPopup() {
+    const popup = document.getElementById('exportReadyPopup');
+    if (popup) {
+        popup.classList.add('hidden');
+    }
+
+    if (exportState.readyPopupTimer) {
+        clearTimeout(exportState.readyPopupTimer);
+        exportState.readyPopupTimer = null;
+    }
+
+    if (exportState.readyPopupCountdown) {
+        clearInterval(exportState.readyPopupCountdown);
+        exportState.readyPopupCountdown = null;
+    }
+
+    exportState.currentExportType = null;
+    exportState.currentExportSnapshot = null;
+}
+
+// ========================================
+// UPDATED EXPORT DROPDOWN HANDLER
+// ========================================
+
+/**
+ * Setup export dropdown with loaders
+ */
+function setupExportDropdown() {
+    const exportBtn = document.getElementById('exportBtn');
+    const exportDropdown = document.getElementById('exportDropdown');
+    const exportOptions = document.querySelectorAll('.export-option');
+
+    if (!exportBtn || !exportDropdown) return;
+
+    exportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportDropdown.classList.toggle('active');
+    });
+
+    exportOptions.forEach(option => {
+        option.addEventListener('click', async(e) => {
+            e.stopPropagation();
+            const action = option.dataset.option;
+
+            switch (action) {
+                case 'pdf':
+                    exportDropdown.classList.remove('active');
+                    await showStagedLoader({
+                        stages: ['Preparing document', 'Formatting content', 'Rendering pages', 'Finalizing export'],
+                        totalMs: 8000,
+                        title: 'Preparing PDF export',
+                        tagline: 'Generating PDF document'
+                    });
+                    showReadyExportPopup('pdf', generateSnapshot());
+                    break;
+
+                case 'json':
+                    exportDropdown.classList.remove('active');
+                    await showStagedLoader({
+                        stages: ['Preparing document', 'Formatting content', 'Rendering pages', 'Finalizing export'],
+                        totalMs: 8000,
+                        title: 'Preparing JSON export',
+                        tagline: 'Generating JSON snapshot'
+                    });
+                    showReadyExportPopup('json', generateSnapshot());
+                    break;
+
+                case 'both':
+                    exportDropdown.classList.remove('active');
+                    await showStagedLoader({
+                        stages: ['Preparing document', 'Formatting content', 'Rendering pages', 'Finalizing export', 'Creating bundle'],
+                        totalMs: 10000,
+                        title: 'Preparing export bundle',
+                        tagline: 'Generating PDF and JSON'
+                    });
+                    showReadyExportPopup('both', generateSnapshot());
+                    break;
+
+                case 'cancel':
+                    exportDropdown.classList.remove('active');
+                    break;
+            }
+        });
+    });
+
+    document.addEventListener('click', () => {
+        exportDropdown.classList.remove('active');
+    });
+
+    exportDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+// ========================================
+// SHARED LINK OPENING BEHAVIOR
+// ========================================
+
+/**
+ * Show shared link popup
+ */
+function showSharedLinkPopup(link) {
+    const popup = document.getElementById('sharedLinkPopup');
+    if (!popup) return;
+
+    // Clear existing timers
+    if (sharedLinkState.popupTimer) {
+        clearTimeout(sharedLinkState.popupTimer);
+    }
+    if (sharedLinkState.popupCountdown) {
+        clearInterval(sharedLinkState.popupCountdown);
+    }
+
+    // Update link
+    const linkElement = popup.querySelector('#sharedLinkUrl');
+    if (linkElement) {
+        linkElement.textContent = link;
+    }
+
+    // Setup timer
+    const timerBar = popup.querySelector('.shared-link-progress');
+    const countdown = popup.querySelector('.shared-link-countdown');
+    let timeLeft = 10;
+
+    function updateCountdown() {
+        timeLeft--;
+        if (timerBar) timerBar.style.width = `${timeLeft * 10}%`;
+        if (countdown) countdown.textContent = `${timeLeft}s`;
+        if (timeLeft <= 0) {
+            closeSharedLinkPopup();
+        }
+    }
+
+    // Start countdown
+    updateCountdown();
+    sharedLinkState.popupCountdown = setInterval(updateCountdown, 1000);
+
+    // Auto-close after 10 seconds
+    sharedLinkState.popupTimer = setTimeout(closeSharedLinkPopup, 10000);
+
+    // Setup action buttons
+    const copyBtn = popup.querySelector('.shared-link-action[data-action="copy"]');
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(link);
+            addAlert('Link copied to clipboard', 'success');
+        };
+    }
+
+    const shareBtn = popup.querySelector('.shared-link-action[data-action="share"]');
+    if (shareBtn) {
+        shareBtn.onclick = () => {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Crypto Statistic Environment',
+                    text: 'Check out this crypto market environment',
+                    url: link
+                });
+            } else {
+                navigator.clipboard.writeText(link);
+                addAlert('Link copied to clipboard (share not available)', 'success');
+            }
+        };
+    }
+
+    const closeBtn = popup.querySelector('.shared-link-action[data-action="close"]');
+    if (closeBtn) {
+        closeBtn.onclick = closeSharedLinkPopup;
+    }
+
+    const headerCloseBtn = popup.querySelector('.shared-link-close');
+    if (headerCloseBtn) {
+        headerCloseBtn.onclick = closeSharedLinkPopup;
+    }
+
+    // Show popup
+    popup.classList.remove('hidden');
+}
+
+/**
+ * Close shared link popup
+ */
+function closeSharedLinkPopup() {
+    const popup = document.getElementById('sharedLinkPopup');
+    if (popup) {
+        popup.classList.add('hidden');
+    }
+
+    if (sharedLinkState.popupTimer) {
+        clearTimeout(sharedLinkState.popupTimer);
+        sharedLinkState.popupTimer = null;
+    }
+
+    if (sharedLinkState.popupCountdown) {
+        clearInterval(sharedLinkState.popupCountdown);
+        sharedLinkState.popupCountdown = null;
+    }
+}
+
+// ========================================
+// SHARED ENVIRONMENT RESTORATION
+// ========================================
+
+/**
+ * Check and apply shared environment from URL hash
+ */
+function checkAndApplySharedEnvironmentFromHash() {
+    console.log('[SHARE] Checking URL hash for environment...');
+    const hash = window.location.hash;
+    if (!hash || !hash.includes('env=')) return;
+
+    try {
+        // Extract encoded snapshot from hash
+        const encoded = hash.split('env=')[1];
+        if (!encoded) return;
+
+        if (SHARE_DEBUG) console.log('[SHARE] Found environment in URL hash');
+
+        // Decode snapshot
+        const snapshot = shareDecodeSnapshot(encoded);
+        if (!snapshot) {
+            throw new Error('Failed to decode snapshot from URL');
+        }
+
+        // Validate snapshot
+        if (!validateSnapshot(snapshot)) {
+            throw new Error('Invalid snapshot format from URL');
+        }
+
+        // Set restored flag
+        state.restoredFromLink = true;
+
+        // Update header time to snapshot time
+        updateDateTimeFromSnapshot(snapshot);
+
+        // Apply snapshot using existing JSRE functions
+        enterRestoreMode(snapshot);
+        applySnapshot(snapshot);
+        updateUIFromSnapshot(snapshot);
+
+        addAlert(`Environment restored from shared link`, 'success');
+
+        // Show shared link popup
+        setTimeout(() => {
+            const shareUrl = window.location.href;
+            showSharedLinkPopup(shareUrl);
+        }, 500);
+
+    } catch (error) {
+        console.error('[SHARE] Failed to restore from URL:', error);
+        addAlert('Failed to restore environment from link', 'error');
+        // Clear invalid hash
+        window.location.hash = '';
+    }
+}
+
+// ========================================
+// APPLICATION INITIALIZATION
+// ========================================
+
+/**
+ * Initialize application
+ */
 function init() {
     console.log("[APP] Initializing...");
+
+    // Check for shared environment in URL hash BEFORE initializing live data
+    checkAndApplySharedEnvironmentFromHash();
+
     updateTime();
     setInterval(updateTime, 1000);
     setupCryptoSelector();
@@ -71,12 +1231,25 @@ function init() {
     setupImportButton();
     setupSearchPanel();
     setupCurrencyToggle();
+    setupShareEnvFab();
     initJSREOverlay();
-    setupAIPanelDrag(); // Initialize drag functionality
+    setupAIPanelDrag();
+    initShareModal();
 
+    // Setup shared link popup
+    const sharedLinkPopup = document.getElementById('sharedLinkPopup');
+    if (sharedLinkPopup) {
+        sharedLinkPopup.classList.add('hidden');
+    }
+
+    // Setup export ready popup
+    const exportReadyPopup = document.getElementById('exportReadyPopup');
+    if (exportReadyPopup) {
+        exportReadyPopup.classList.add('hidden');
+    }
 
     // Only connect to live data if not in restore mode
-    if (!state.isRestoreMode) {
+    if (!state.isRestoreMode && !state.restoredFromLink) {
         connectWebSocket();
         fetchAllCryptoData();
         setInterval(() => fetchAllCryptoData(), 30000);
@@ -93,23 +1266,61 @@ function init() {
     const urlParams = new URLSearchParams(window.location.search);
     const restoreParam = urlParams.get('restore');
     if (restoreParam === 'demo') {
-        // Load a demo snapshot (for testing)
         loadDemoSnapshot();
     }
 }
 
-// Update current time
+/**
+ * Update current time
+ */
+/**
+ * Update current time - with restore mode support
+ */
 function updateTime() {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { hour12: false });
     const el = document.getElementById('currentTime');
-    if (el) el.textContent = timeString;
-}
+    if (!el) return;
 
+    if (state.isRestoreMode && state.restoreSnapshot) {
+        // In restore mode, show snapshot time (not live updates)
+        // This gets called once during initialization but not updated thereafter
+        const snapshotTime = new Date(state.restoreSnapshot.snapshot.metadata.snapshotTime);
+        const datePart = snapshotTime.toLocaleDateString('en-CA');
+        const timePart = snapshotTime.toLocaleTimeString('en-US', {
+            hour12: false
+        });
+        el.textContent = `${datePart}  | ${timePart}`;
+    } else {
+        // Normal live mode - update time every second
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+        el.textContent = timeString;
+    }
+}
+/**
+ * Setup time updates based on current mode
+ */
+function setupTimeUpdates() {
+    // Clear any existing interval
+    if (window.timeUpdateInterval) {
+        clearInterval(window.timeUpdateInterval);
+        window.timeUpdateInterval = null;
+    }
+
+    if (!state.isRestoreMode && !state.restoredFromLink) {
+        // Live mode - update time every second
+        updateTime(); // Initial update
+        window.timeUpdateInterval = setInterval(updateTime, 1000);
+    } else {
+        // Restore mode - set time once from snapshot
+        updateTime(); // This will show snapshot time
+    }
+}
+/**
+ * Setup crypto selector buttons
+ */
 function setupCryptoSelector() {
     const buttons = document.querySelectorAll('.crypto-btn');
 
-    // 🔹 INITIAL STATE: hide the default active crypto (BTC)
     buttons.forEach(btn => {
         const isCurrent = btn.dataset.symbol === state.currentSymbol;
 
@@ -119,9 +1330,7 @@ function setupCryptoSelector() {
             btn.classList.remove('active', 'hidden');
         }
 
-        // 🔹 CLICK HANDLER
         btn.addEventListener('click', () => {
-            // In restore mode, we still allow switching but only between restored symbols
             if (state.isRestoreMode && state.restoreSnapshot) {
                 const availableSymbols = Object.keys(state.restoreSnapshot.snapshot.priceData || {});
                 if (!availableSymbols.includes(btn.dataset.symbol)) {
@@ -130,76 +1339,25 @@ function setupCryptoSelector() {
                 }
             }
 
-            // 1. Reset all buttons
             buttons.forEach(b => b.classList.remove('active', 'hidden'));
-
-            // 2. Make clicked one active + hidden
             btn.classList.add('active', 'hidden');
 
-            // 3. Update state
             state.currentSymbol = btn.dataset.symbol;
             state.currentName = btn.dataset.name;
             state.currentIcon = btn.dataset.icon;
 
-            // 4. Refresh UI
             updatePriceDisplay();
             addAlert(`Switched to ${state.currentName}`, 'info');
         });
     });
 }
 
-// Setup export dropdown (replaces old setupExportButton)
-function setupExportDropdown() {
-    const exportBtn = document.getElementById('exportBtn');
-    const exportDropdown = document.getElementById('exportDropdown');
-    const exportOptions = document.querySelectorAll('.export-option');
-
-    if (!exportBtn || !exportDropdown) return;
-
-    // Toggle dropdown on export button click
-    exportBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        exportDropdown.classList.toggle('active');
-    });
-
-    // Handle option clicks
-    exportOptions.forEach(option => {
-        option.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const action = option.dataset.option;
-
-            switch (action) {
-                case 'pdf':
-                    generateAndExport('pdf');
-                    break;
-                case 'json':
-                    generateAndExport('json');
-                    break;
-                case 'both':
-                    generateAndExport('both');
-                    break;
-                case 'cancel':
-                    // Just close dropdown
-                    break;
-            }
-
-            exportDropdown.classList.remove('active');
-        });
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', () => {
-        exportDropdown.classList.remove('active');
-    });
-
-    // Prevent dropdown from closing when clicking inside it
-    exportDropdown.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-}
 let jsonModalTimerId = null;
 let jsonModalCountdownId = null;
 
+/**
+ * Show JSON decision modal
+ */
 function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onSecondary, autoAction, timerFormat }) {
     console.log("[JSRE] Showing decision modal");
     const modal = document.getElementById("jsonDecisionModal");
@@ -212,7 +1370,7 @@ function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onS
     let timeLeft = 10;
     timerEl.textContent = timerFormat === "restore" ?
         `restore in ${timeLeft} seconds` :
-        `close's in ${timeLeft} seconds`;
+        `closes in ${timeLeft} seconds`;
 
     titleEl.textContent = title;
     descEl.textContent = desc;
@@ -238,7 +1396,7 @@ function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onS
         timeLeft--;
         timerEl.textContent = timerFormat === "restore" ?
             `restore in ${timeLeft} seconds` :
-            `close's in ${timeLeft} seconds`;
+            `closes in ${timeLeft} seconds`;
         if (timeLeft <= 0) {
             console.log("[JSRE] Auto-action triggered");
             closeJsonModal();
@@ -247,13 +1405,17 @@ function showJsonModal({ title, desc, primaryText, secondaryText, onPrimary, onS
     }, 1000);
 }
 
+/**
+ * Close JSON modal
+ */
 function closeJsonModal() {
     clearInterval(jsonModalCountdownId);
     document.getElementById("jsonDecisionModal").style.display = "none";
 }
 
-
-// Setup import button for JSON snapshot restoration
+/**
+ * Setup import button for JSON snapshot restoration
+ */
 function setupImportButton() {
     console.log("[JSRE] Setting up import button");
     const importBtn = document.getElementById('importBtn');
@@ -287,20 +1449,16 @@ function setupImportButton() {
             console.log("[JSRE] File read complete");
             showJSRE();
 
-            // Store timeout IDs so we can clear them on error
             const timeoutIds = [];
 
-            // Phase 1: Redirecting to restore environment (2-4.5s)
             timeoutIds.push(setTimeout(() => {
                 advanceJSRE("Redirecting to restore environment");
             }, 2000));
 
-            // Phase 2: Uploading snapshot file (4.5-7s)
             timeoutIds.push(setTimeout(() => {
                 advanceJSRE("Uploading snapshot file");
             }, 4500));
 
-            // Phase 3: Validating snapshot structure (7-9.5s)
             timeoutIds.push(setTimeout(() => {
                 advanceJSRE("Validating snapshot structure");
 
@@ -311,28 +1469,23 @@ function setupImportButton() {
                     console.log("[JSRE] JSON parsed successfully");
                 } catch (err) {
                     console.error("[JSRE] JSON parse error:", err.message);
-                    // Clear remaining timeouts for incorrect file
                     timeoutIds.forEach(id => clearTimeout(id));
-                    jsreError(); // This will show error at 9.5s
+                    jsreError();
                     return;
                 }
 
                 console.log("[JSRE] Validating snapshot structure...");
                 if (!validateSnapshot(snapshot)) {
                     console.error("[JSRE] Snapshot validation failed");
-                    // Clear remaining timeouts for incorrect file
                     timeoutIds.forEach(id => clearTimeout(id));
-                    jsreError(); // This will show error at 9.5s
+                    jsreError();
                     return;
                 }
 
                 console.log("[JSRE] Snapshot validation passed");
-                // Only proceed to Phase 4 if file is correct
-                // Phase 4: Preparing secure restore session (9.5-12s)
                 timeoutIds.push(setTimeout(() => {
                     advanceJSRE("Preparing secure restore session");
 
-                    // Final delay before showing modal (12-12.5s)
                     timeoutIds.push(setTimeout(() => {
                         console.log("[JSRE] Showing restore confirmation modal");
                         JSRE.overlay.classList.add("hidden");
@@ -354,11 +1507,11 @@ function setupImportButton() {
                                 restoreFromSnapshot(snapshot);
                             }
                         });
-                    }, 500)); // Small delay after final phase
+                    }, 500));
 
-                }, 2500)); // Phase 4 starts 2500ms after Phase 3
+                }, 2500));
 
-            }, 7000)); // Phase 3 starts at 7000ms (2s + 2.5s + 2.5s)
+            }, 7000));
         };
 
         reader.onerror = () => {
@@ -367,19 +1520,19 @@ function setupImportButton() {
         };
 
         reader.readAsText(file);
-
-        // Reset file input
         importFileInput.value = '';
     });
 }
 
+/**
+ * Update date time from snapshot
+ */
 function updateDateTimeFromSnapshot(snapshot) {
     const el = document.getElementById('currentTime');
     if (!el) return;
 
     const snapshotDate = new Date(snapshot.snapshot.metadata.snapshotTime);
-
-    const datePart = snapshotDate.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const datePart = snapshotDate.toLocaleDateString('en-CA');
     const timePart = snapshotDate.toLocaleTimeString('en-US', {
         hour12: false
     });
@@ -387,11 +1540,11 @@ function updateDateTimeFromSnapshot(snapshot) {
     el.textContent = `${datePart}  | ${timePart}`;
 }
 
-
-// Generate and export based on format
+/**
+ * Generate and export based on format
+ */
 function generateAndExport(format) {
     try {
-        // Generate single snapshot
         const snapshot = generateSnapshot();
 
         switch (format) {
@@ -412,30 +1565,25 @@ function generateAndExport(format) {
     }
 }
 
-// Generate comprehensive snapshot
+/**
+ * Generate comprehensive snapshot
+ */
 function generateSnapshot() {
     const now = new Date();
     const snapshotTime = now.toISOString();
     const readableTime = now.toLocaleString();
 
-    // Calculate data freshness
     const dataFreshnessSeconds = Math.floor((Date.now() - state.lastUpdateTime) / 1000);
 
-    // Determine snapshot quality
     let snapshotQuality = 'STALE';
     if (dataFreshnessSeconds <= 10) snapshotQuality = 'FRESH';
     else if (dataFreshnessSeconds <= 60) snapshotQuality = 'RECENT';
 
-    // Get WebSocket status
     const wsStatus = state.ws && state.ws.readyState === WebSocket.OPEN ? 'connected' : 'disconnected';
-
-    // Determine data source
     const dataSourcePath = wsStatus === 'connected' ? 'Binance WebSocket (Primary)' : 'CoinGecko REST (Fallback)';
 
-    // Get all symbols from priceData
     const allSymbols = Object.keys(state.priceData);
 
-    // Pre-calculate derived analytics for all symbols
     const derivedAnalytics = {};
     const currencyContext = {
         base: 'USDT',
@@ -447,29 +1595,22 @@ function generateSnapshot() {
         const data = state.priceData[symbol];
         if (!data) return;
 
-        // Store currency conversions
         currencyContext.prices[symbol] = {
             usdt: data.price,
             inr: data.price * state.usdtToInrRate
         };
 
-        // Calculate microstructure metrics
         const priceRange = data.high24h - data.low24h || 1;
         const pricePosition = (data.price - data.low24h) / priceRange;
         const avgPrice = (data.high24h + data.low24h) / 2 || data.price || 1;
 
         derivedAnalytics[symbol] = {
-            // Microstructure
             orderFlowImbalance: (pricePosition - 0.5) * 100,
             bidAskImbalance: pricePosition * 100,
             volumeSlope: data.priceChangePercent24h * 2,
-
-            // Volatility
             volatility1h: ((priceRange / avgPrice) * 100) / 24,
             volatility4h: ((priceRange / avgPrice) * 100) / 6,
             volatility24h: (priceRange / avgPrice) * 100,
-
-            // Risk indicators
             volatilityRiskScore: Math.min(((data.high24h - data.low24h) / (data.price || 1)) * 100, 100),
             liquidityScore: Math.min((data.volume24h / 1000000) * 10, 100),
             whaleActivityScore: Math.min((data.volume24h / data.price) % 100, 100),
@@ -477,22 +1618,17 @@ function generateSnapshot() {
         };
     });
 
-    // Build top movers from snapshot data
     const topMovers = Object.entries(state.priceData)
         .map(([symbol, data]) => ({ symbol, change: data.priceChangePercent24h }))
         .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
         .slice(0, 5);
 
-    // Get current UI context
-    const currentCryptoBtn = document.querySelector(`.crypto-btn[data-symbol="${state.currentSymbol}"]`);
     const displayPair = `${state.currentSymbol}/${state.currency}`;
 
-    // Build snapshot object
     const snapshot = {
         version: "1.0",
         engine: "CryptoView-JSRE",
         snapshot: {
-            // Application state
             applicationState: {
                 currentSymbol: state.currentSymbol,
                 currentName: state.currentName,
@@ -503,17 +1639,9 @@ function generateSnapshot() {
                 dataSourcePath: dataSourcePath,
                 themeMode: state.theme
             },
-
-            // Raw price data for ALL symbols
-            priceData: JSON.parse(JSON.stringify(state.priceData)), // Deep clone
-
-            // Currency context
+            priceData: JSON.parse(JSON.stringify(state.priceData)),
             currencyContext: currencyContext,
-
-            // Derived analytics (pre-computed)
             derivedAnalytics: derivedAnalytics,
-
-            // UI context
             uiContext: {
                 selectedAsset: {
                     name: state.currentName,
@@ -527,8 +1655,6 @@ function generateSnapshot() {
                 },
                 theme: state.theme
             },
-
-            // Metadata
             metadata: {
                 snapshotTime: snapshotTime,
                 dataFreshnessSeconds: dataFreshnessSeconds,
@@ -536,13 +1662,9 @@ function generateSnapshot() {
                 totalDataPoints: state.dataPointsCount,
                 snapshotQuality: snapshotQuality,
                 applicationVersion: APP_VERSION,
-                alerts: [...state.alerts].slice(0, 10) // Last 10 alerts
+                alerts: [...state.alerts].slice(0, 10)
             },
-
-            // Top movers (pre-computed)
             topMovers: topMovers,
-
-            // Anomalies (current state)
             anomalies: getCurrentAnomalies()
         }
     };
@@ -550,7 +1672,9 @@ function generateSnapshot() {
     return snapshot;
 }
 
-// Get current anomalies for snapshot
+/**
+ * Get current anomalies for snapshot
+ */
 function getCurrentAnomalies() {
     const anomalies = [];
     Object.entries(state.priceData).forEach(([symbol, data]) => {
@@ -573,7 +1697,9 @@ function getCurrentAnomalies() {
     return anomalies;
 }
 
-// Export to PDF (modified to use snapshot)
+/**
+ * Export to PDF
+ */
 function exportToPDF(snapshot) {
     try {
         if (!window.jspdf || !window.jspdf.jsPDF) {
@@ -586,7 +1712,6 @@ function exportToPDF(snapshot) {
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
 
-        // ---------- helpers ----------
         function n(v, d = 2) {
             const num = Number(v);
             if (!isFinite(num)) return "N/A";
@@ -653,7 +1778,6 @@ function exportToPDF(snapshot) {
             pdf.text(value2, pageW / 2 + 55, y);
         }
 
-        // ---------- snapshot values ----------
         const c = snapshot.snapshot.priceData[snapshot.snapshot.applicationState.currentSymbol];
         const now = new Date();
         const last = c.lastUpdate || now.getTime();
@@ -678,9 +1802,7 @@ function exportToPDF(snapshot) {
         const whale = Math.min((c.volume24h / c.price) % 100, 100);
         const dev = Math.min(Math.abs((c.price - c.low24h) / c.price) * 100, 100);
 
-        // =====================================================
-        // PAGE 1 – MARKET ANALYTICS
-        // =====================================================
+        // PAGE 1
         drawHeader(
             "Crypto View - Real-Time Market Report",
             "Generated: " + new Date().toLocaleString()
@@ -688,7 +1810,6 @@ function exportToPDF(snapshot) {
 
         let y = 32;
 
-        // Snapshot Metadata
         sectionHeader("Snapshot Metadata", y);
         y += 10;
         twoColumn(
@@ -718,7 +1839,6 @@ function exportToPDF(snapshot) {
         labelPair("Source Path", srcPath, y);
         y += 10;
 
-        // Price Summary – include USDT + INR for all key metrics
         sectionHeader("Price Summary (Live)", y);
         y += 10;
         twoColumn(
@@ -756,7 +1876,6 @@ function exportToPDF(snapshot) {
         labelPair("Change (24h)", n(c.priceChangePercent24h) + "%", y);
         y += 12;
 
-        // Market Microstructure
         sectionHeader("Market Microstructure", y);
         y += 10;
         twoColumn(
@@ -770,7 +1889,6 @@ function exportToPDF(snapshot) {
         labelPair("Volume Slope", n(vSlope), y);
         y += 12;
 
-        // Volatility Metrics
         sectionHeader("Volatility Metrics", y);
         y += 10;
         twoColumn(
@@ -784,7 +1902,6 @@ function exportToPDF(snapshot) {
         labelPair("1h Volatility", n(vol1) + "%", y);
         y += 12;
 
-        // Risk Indicators
         sectionHeader("Risk Indicators", y);
         y += 10;
         twoColumn(
@@ -804,7 +1921,6 @@ function exportToPDF(snapshot) {
         );
         y += 12;
 
-        // Top Movers
         sectionHeader("Top Market Movers", y);
         y += 10;
         const movers = snapshot.snapshot.topMovers;
@@ -820,9 +1936,7 @@ function exportToPDF(snapshot) {
             y += 6;
         });
 
-        // =====================================================
-        // PAGE 2 – ALERTS + VERIFICATION + LINKS
-        // =====================================================
+        // PAGE 2
         pdf.addPage();
         drawHeader(
             "Crypto View - Alerts & Verification",
@@ -830,7 +1944,6 @@ function exportToPDF(snapshot) {
         );
         y = 32;
 
-        // Recent Alerts
         sectionHeader("Recent Alerts", y);
         y += 10;
         pdf.setFontSize(10.5);
@@ -857,7 +1970,6 @@ function exportToPDF(snapshot) {
             });
         }
 
-        // ── Pull the verification panel DOWN near bottom ──
         const panelHeight = 38;
         const bottomMargin = 22;
         const desiredTop = pageH - bottomMargin - panelHeight;
@@ -900,7 +2012,6 @@ function exportToPDF(snapshot) {
             panelTop + 31
         );
 
-        // Seal
         const cx = pageW - 32;
         const cy = panelTop + panelHeight / 2;
         pdf.setDrawColor(160, 0, 0);
@@ -912,7 +2023,6 @@ function exportToPDF(snapshot) {
 
         centered("VERIFIED", cx, cy + 2, 7);
 
-        // ---------- FOOTER ON EVERY PAGE ----------
         const githubUrl = "https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt";
         const liveUrl = "https://ajith-data-analyst.github.io/crypto_view/";
         const copyrightText = "© 2025 Crypto View | All rights reserved | Live Crypto Price Analytics";
@@ -922,11 +2032,9 @@ function exportToPDF(snapshot) {
             pdf.setPage(p);
             pdf.setFontSize(8);
 
-            // Left footer: CRYPTO VIEW (clickable)
             pdf.setTextColor(40, 70, 160);
             pdf.textWithLink("CRYPTO VIEW", 12, pageH - 8, { url: liveUrl });
 
-            // Right footer: copyright (clickable)
             pdf.setTextColor(40, 40, 40);
             const cw = pdf.getTextWidth(copyrightText);
             const cxRight = pageW - 12 - cw;
@@ -943,10 +2051,11 @@ function exportToPDF(snapshot) {
     }
 }
 
-// Export to JSON
+/**
+ * Export to JSON
+ */
 function exportToJSON(snapshot) {
     try {
-        // Create pretty-printed JSON
         const jsonString = JSON.stringify(snapshot, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -965,28 +2074,24 @@ function exportToJSON(snapshot) {
     }
 }
 
-// =====================================================
+// ========================================
 // JSRE - JSON STATE RESTORE ENGINE
-// =====================================================
+// ========================================
 
-// Restore application from snapshot
+/**
+ * Restore application from snapshot
+ */
 function restoreFromSnapshot(snapshot) {
     try {
         console.log("[JSRE] Starting restore process...");
-        // Validate snapshot structure
         if (!validateSnapshot(snapshot)) {
             addAlert("Invalid snapshot format", "error");
             return;
         }
 
         console.log("[JSRE] Snapshot validated, entering restore mode");
-        // Enter restore mode
         enterRestoreMode(snapshot);
-
-        // Apply snapshot data
         applySnapshot(snapshot);
-
-        // Update UI
         updateUIFromSnapshot(snapshot);
 
         console.log("[JSRE] Restore completed successfully");
@@ -997,7 +2102,9 @@ function restoreFromSnapshot(snapshot) {
     }
 }
 
-// Validate snapshot structure
+/**
+ * Validate snapshot structure
+ */
 function validateSnapshot(snapshot) {
     console.log("[JSRE] Validating snapshot structure...");
 
@@ -1045,6 +2152,12 @@ function validateSnapshot(snapshot) {
     return true;
 }
 
+/**
+ * Enter restore mode
+ */
+/**
+ * Enter restore mode
+ */
 function enterRestoreMode(snapshot) {
     console.log("[JSRE] Entering restore mode");
     state.isRestoreMode = true;
@@ -1055,21 +2168,22 @@ function enterRestoreMode(snapshot) {
         state.ws.close();
     }
 
-    // Clear all timers
     console.log("[JSRE] Clearing existing timers");
-    const highestId = window.setTimeout(() => {}, 0);
-    for (let i = 0; i < highestId; i++) {
-        window.clearInterval(i);
+    // Clear time update interval
+    if (window.timeUpdateInterval) {
+        clearInterval(window.timeUpdateInterval);
+        window.timeUpdateInterval = null;
     }
 
-    // 🔹 Show snapshot DATE + TIME in header
+    // Update time display from snapshot (ONCE)
     updateDateTimeFromSnapshot(snapshot);
+
+    // ... rest of existing function ...
 
     const indicator = document.getElementById('restoreModeIndicator');
     const restoreText = document.getElementById('restoreModeText');
     const exitBtn = document.getElementById('exitRestoreModeBtn');
 
-    // Show Restore FAB
     const restoreFab = document.getElementById('restoreFabBtn');
     if (restoreFab) {
         restoreFab.style.display = 'flex';
@@ -1092,63 +2206,76 @@ function enterRestoreMode(snapshot) {
     console.log("[JSRE] Restore mode activated");
 }
 
-// Exit restore mode
+/**
+ * Exit restore mode
+ */
+/**
+ * Exit restore mode
+ */
 function exitRestoreMode() {
     console.log("[JSRE] Exiting restore mode");
     state.isRestoreMode = false;
     state.restoreSnapshot = null;
+    state.restoredFromLink = false;
 
-    // Hide restore mode indicator
     const indicator = document.getElementById('restoreModeIndicator');
     if (indicator) {
         indicator.style.display = 'none';
     }
 
-    // Hide restore FAB
     const restoreFab = document.getElementById('restoreFabBtn');
     if (restoreFab) {
         restoreFab.style.display = 'none';
     }
 
-    // Reload the page to restart live data
-    console.log("[JSRE] Reloading page to restore live data");
-    window.location.reload();
-}
+    // Hide exit restore button in share modal
+    const exitRestoreContainer = shareState.modal.querySelector('#share-exit-restore-container');
+    if (exitRestoreContainer) {
+        exitRestoreContainer.style.display = 'none';
+    }
 
-// Apply snapshot data to state
+    // Reset time display to live updates
+    setupTimeUpdates();
+
+    console.log("[JSRE] Restarting live data...");
+    // Reconnect to live data
+    connectWebSocket();
+    fetchAllCryptoData();
+    // Don't reload page - just switch back to live mode
+    addAlert("Switched back to live mode", "success");
+}
+/**
+ * Apply snapshot data to state
+ */
 function applySnapshot(snapshot) {
     console.log("[JSRE] Applying snapshot data to state");
-    // Update application state
     state.currentSymbol = snapshot.snapshot.applicationState.currentSymbol;
     state.currentName = snapshot.snapshot.applicationState.currentName;
     state.currentIcon = snapshot.snapshot.applicationState.currentIcon;
     state.currency = snapshot.snapshot.applicationState.currency;
     state.theme = snapshot.snapshot.applicationState.theme;
 
-    // Update price data (deep copy)
     state.priceData = JSON.parse(JSON.stringify(snapshot.snapshot.priceData));
 
-    // Update currency conversion rate
     if (snapshot.snapshot.currencyContext && snapshot.snapshot.currencyContext.conversionRate) {
         state.usdtToInrRate = snapshot.snapshot.currencyContext.conversionRate;
     }
 
-    // Update alerts
     if (snapshot.snapshot.metadata.alerts) {
         state.alerts = [...snapshot.snapshot.metadata.alerts];
     }
 
-    // Update data points count
     state.dataPointsCount = snapshot.snapshot.metadata.totalDataPoints || 0;
     state.lastUpdateTime = new Date(snapshot.snapshot.metadata.snapshotTime).getTime();
 
     console.log(`[JSRE] Applied snapshot for ${state.currentSymbol}`);
 }
 
-// Update UI from snapshot
+/**
+ * Update UI from snapshot
+ */
 function updateUIFromSnapshot(snapshot) {
     console.log("[JSRE] Updating UI from snapshot");
-    // Update theme
     if (snapshot.snapshot.applicationState.theme) {
         state.theme = snapshot.snapshot.applicationState.theme;
         document.documentElement.setAttribute('data-theme', state.theme);
@@ -1160,7 +2287,6 @@ function updateUIFromSnapshot(snapshot) {
         }
     }
 
-    // Update currency toggle button
     const currencyBtn = document.getElementById('currencyToggle');
     if (currencyBtn) {
         const icon = currencyBtn.querySelector('.fab-icon');
@@ -1169,7 +2295,6 @@ function updateUIFromSnapshot(snapshot) {
         }
     }
 
-    // Update crypto selector buttons
     const buttons = document.querySelectorAll('.crypto-btn');
     buttons.forEach(btn => {
         const symbol = btn.dataset.symbol;
@@ -1181,38 +2306,28 @@ function updateUIFromSnapshot(snapshot) {
         }
     });
 
-    // Update price display (using snapshot data)
     updatePriceDisplayFromSnapshot(snapshot);
-
-    // Update market microstructure from pre-computed analytics
     updateMicrostructureFromSnapshot(snapshot);
-
-    // Update volatility metrics from pre-computed analytics
     updateVolatilityFromSnapshot(snapshot);
-
-    // Update risk indicators from pre-computed analytics
     updateRiskIndicatorsFromSnapshot(snapshot);
 
-    // Update top movers
     if (snapshot.snapshot.topMovers) {
         updateTopMoversFromSnapshot(snapshot);
     }
 
-    // Update anomalies
     if (snapshot.snapshot.anomalies) {
         updateAnomaliesFromSnapshot(snapshot);
     }
 
-    // Update alerts
     updateAlertsFromSnapshot(snapshot);
-
-    // Update system health indicators
     updateSystemHealthFromSnapshot(snapshot);
 
     console.log("[JSRE] UI update complete");
 }
 
-// Update price display from snapshot
+/**
+ * Update price display from snapshot
+ */
 function updatePriceDisplayFromSnapshot(snapshot) {
     const data = snapshot.snapshot.priceData[state.currentSymbol];
     if (!data) {
@@ -1230,23 +2345,18 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
 
-    // Update symbol display based on currency
     if (symbolEl) {
         symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
     }
 
-    // Ensure elements exist
     if (!currentPriceEl || !priceArrowEl || !priceChangeEl) return;
 
-    // Remove any previous classes
     currentPriceEl.classList.remove('price-pulse', 'positive', 'negative');
     priceArrowEl.classList.remove('neutral', 'positive', 'negative');
 
-    // Set neutral arrow for snapshot (no live tick)
     priceArrowEl.classList.add('neutral');
     priceArrowEl.textContent = '→';
 
-    // Set price color based on 24h change
     const changePercent = data.priceChangePercent24h;
     if (changePercent > 0) {
         currentPriceEl.classList.add('positive');
@@ -1254,10 +2364,8 @@ function updatePriceDisplayFromSnapshot(snapshot) {
         currentPriceEl.classList.add('negative');
     }
 
-    // Set displayed formatted price
     currentPriceEl.textContent = formatPrice(data.price);
 
-    // Update price change display (24h)
     const changeAmount = data.priceChange24h;
     priceChangeEl.className = 'price-change ' + (changePercent >= 0 ? 'positive' : 'negative');
     const changeValueEl = priceChangeEl.querySelector('.change-value');
@@ -1265,7 +2373,6 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (changeValueEl) changeValueEl.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
     if (changeAmountEl) changeAmountEl.textContent = `${changePercent >= 0 ? '+' : ''}${formatPrice(changeAmount)}`;
 
-    // Stats
     const highEl = document.getElementById('high24h');
     const lowEl = document.getElementById('low24h');
     const volEl = document.getElementById('volume24h');
@@ -1273,13 +2380,11 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     if (lowEl) lowEl.textContent = formatPrice(data.low24h);
     if (volEl) volEl.textContent = formatVolume(data.volume24h);
 
-    // Update footer live price
     const footerPriceEl = document.getElementById("footerLivePrice");
     if (footerPriceEl) {
         footerPriceEl.textContent = formatPrice(data.price);
         footerPriceEl.classList.remove("footer-price-green", "footer-price-red");
 
-        // In restore mode, color based on 24h change
         if (changePercent > 0) {
             footerPriceEl.classList.add("footer-price-green");
         } else if (changePercent < 0) {
@@ -1288,7 +2393,9 @@ function updatePriceDisplayFromSnapshot(snapshot) {
     }
 }
 
-// Update microstructure from snapshot (pre-computed)
+/**
+ * Update microstructure from snapshot
+ */
 function updateMicrostructureFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) {
@@ -1321,7 +2428,9 @@ function updateMicrostructureFromSnapshot(snapshot) {
     }
 }
 
-// Update volatility from snapshot (pre-computed)
+/**
+ * Update volatility from snapshot
+ */
 function updateVolatilityFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1343,7 +2452,9 @@ function updateVolatilityFromSnapshot(snapshot) {
     if (vol24hGaugeEl) vol24hGaugeEl.style.width = `${Math.min(analytics.volatility24h * 10, 100)}%`;
 }
 
-// Update risk indicators from snapshot (pre-computed)
+/**
+ * Update risk indicators from snapshot
+ */
 function updateRiskIndicatorsFromSnapshot(snapshot) {
     const analytics = snapshot.snapshot.derivedAnalytics[state.currentSymbol];
     if (!analytics) return;
@@ -1356,7 +2467,9 @@ function updateRiskIndicatorsFromSnapshot(snapshot) {
     });
 }
 
-// Update top movers from snapshot (pre-computed)
+/**
+ * Update top movers from snapshot
+ */
 function updateTopMoversFromSnapshot(snapshot) {
     const container = document.getElementById('top-movers');
     if (!container || !snapshot.snapshot.topMovers) return;
@@ -1371,7 +2484,9 @@ function updateTopMoversFromSnapshot(snapshot) {
     `).join('');
 }
 
-// Update anomalies from snapshot
+/**
+ * Update anomalies from snapshot
+ */
 function updateAnomaliesFromSnapshot(snapshot) {
     const container = document.getElementById('anomalyContainer');
     if (!container) return;
@@ -1396,7 +2511,9 @@ function updateAnomaliesFromSnapshot(snapshot) {
     }
 }
 
-// Update alerts from snapshot
+/**
+ * Update alerts from snapshot
+ */
 function updateAlertsFromSnapshot(snapshot) {
     const container = document.getElementById('alertsContainer');
     if (!container || !snapshot.snapshot.metadata.alerts) return;
@@ -1409,7 +2526,9 @@ function updateAlertsFromSnapshot(snapshot) {
     `).join('');
 }
 
-// Update system health from snapshot
+/**
+ * Update system health from snapshot
+ */
 function updateSystemHealthFromSnapshot(snapshot) {
     const now = new Date();
     const snapshotTime = new Date(snapshot.snapshot.metadata.snapshotTime);
@@ -1428,7 +2547,9 @@ function updateSystemHealthFromSnapshot(snapshot) {
     if (footerConnectionEl) footerConnectionEl.textContent = 'JSRE';
 }
 
-// Load a demo snapshot (for testing)
+/**
+ * Load a demo snapshot (for testing)
+ */
 function loadDemoSnapshot() {
     console.log("[JSRE] Loading demo snapshot");
     const demoSnapshot = {
@@ -1522,77 +2643,17 @@ function loadDemoSnapshot() {
         }
     };
 
-    // Add a small delay to ensure UI is ready
     setTimeout(() => {
         restoreFromSnapshot(demoSnapshot);
         addAlert("Demo snapshot loaded successfully", "info");
     }, 1000);
 }
 
-// =====================================================
-// REST OF THE EXISTING FUNCTIONS (mostly unchanged)
-// =====================================================
-
-// Setup currency toggle with emoji + animation
-function setupCurrencyToggle() {
-    const currencyBtn = document.getElementById('currencyToggle');
-    if (!currencyBtn) return;
-
-    const icon = currencyBtn.querySelector('.fab-icon');
-
-    // 1) Set initial label based on default state (USDT)
-    if (icon) {
-        icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
-    }
-
-    // 2) Helper to play tiny pop/spin animation on the button
-    function playToggleAnimation() {
-        currencyBtn.classList.remove('currency-toggle-pop');
-        void currencyBtn.offsetWidth;
-        currencyBtn.classList.add('currency-toggle-pop');
-        setTimeout(() => {
-            currencyBtn.classList.remove('currency-toggle-pop');
-        }, 200);
-    }
-
-    // 3) Click handler
-    currencyBtn.addEventListener('click', () => {
-        // In restore mode, check if we have both currency values
-        if (state.isRestoreMode && state.restoreSnapshot) {
-            const symbol = state.currentSymbol;
-            const currencyData = state.restoreSnapshot.snapshot.currencyContext.prices[symbol];
-            if (!currencyData) {
-                addAlert("Currency data not available in snapshot", "warning");
-                return;
-            }
-        }
-
-        // flip USDT / INR
-        state.currency = state.currency === 'USDT' ? 'INR' : 'USDT';
-
-        // update emoji + text
-        if (icon) {
-            icon.textContent = state.currency === 'USDT' ? '₹' : '$₮';
-        }
-
-        // play button animation
-        playToggleAnimation();
-
-        // redraw prices
-        if (state.isRestoreMode && state.restoreSnapshot) {
-            updatePriceDisplayFromSnapshot(state.restoreSnapshot);
-        } else {
-            updatePriceDisplay();
-        }
-
-        // log alert
-        addAlert(`Currency switched to ${state.currency}`, 'info');
-    });
-}
-
-// Fetch USDT to INR conversion rate
+/**
+ * Fetch USDT to INR conversion rate
+ */
 async function fetchUsdtToInrRate() {
-    if (state.isRestoreMode) return; // Don't fetch in restore mode
+    if (state.isRestoreMode) return;
 
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -1604,9 +2665,15 @@ async function fetchUsdtToInrRate() {
     }
 }
 
-// Connect to Binance WebSocket
+// ========================================
+// WEBSOCKET & DATA FUNCTIONS
+// ========================================
+
+/**
+ * Connect to Binance WebSocket
+ */
 function connectWebSocket() {
-    if (state.isRestoreMode) return; // Don't connect in restore mode
+    if (state.isRestoreMode) return;
 
     try {
         const streams = Object.values(cryptoMapping).map(s => `${s}@ticker`).join('/');
@@ -1646,7 +2713,9 @@ function connectWebSocket() {
     }
 }
 
-// Handle ticker updates from WebSocket
+/**
+ * Handle ticker updates from WebSocket
+ */
 function handleTickerUpdate(data) {
     const symbol = data.s.replace('USDT', '');
 
@@ -1673,9 +2742,11 @@ function handleTickerUpdate(data) {
     detectAnomalies(symbol);
 }
 
-// Fetch data from CoinGecko as fallback
+/**
+ * Fetch data from CoinGecko as fallback
+ */
 async function fetchAllCryptoData() {
-    if (state.isRestoreMode) return; // Don't fetch in restore mode
+    if (state.isRestoreMode) return;
 
     try {
         const ids = 'bitcoin,ethereum,cardano,polkadot,solana,binancecoin,ripple,dogecoin,matic-network,litecoin';
@@ -1719,7 +2790,9 @@ async function fetchAllCryptoData() {
     }
 }
 
-// Update price display (existing function, modified for restore mode)
+/**
+ * Update price display
+ */
 function updatePriceDisplay(previousPrice) {
     if (state.isRestoreMode && state.restoreSnapshot) {
         updatePriceDisplayFromSnapshot(state.restoreSnapshot);
@@ -1739,7 +2812,6 @@ function updatePriceDisplay(previousPrice) {
     if (priceIconEl) priceIconEl.textContent = state.currentIcon;
     if (nameEl) nameEl.textContent = state.currentName;
 
-    // Update symbol display based on currency
     if (symbolEl) {
         symbolEl.textContent = `${state.currentSymbol}/${state.currency}`;
     }
@@ -1812,7 +2884,9 @@ function updatePriceDisplay(previousPrice) {
     }
 }
 
-// Update market microstructure metrics
+/**
+ * Update market microstructure metrics
+ */
 function updateMarketMicrostructure(data) {
     if (!data) return;
 
@@ -1844,7 +2918,9 @@ function updateMarketMicrostructure(data) {
     if (bidAskBarEl) bidAskBarEl.style.width = `${Math.max(0, Math.min(bidAsk, 100))}%`;
 }
 
-// Update volatility metrics
+/**
+ * Update volatility metrics
+ */
 function updateVolatilityMetrics(data) {
     if (!data) return;
 
@@ -1872,6 +2948,9 @@ function updateVolatilityMetrics(data) {
     if (vol24hGaugeEl) vol24hGaugeEl.style.width = `${Math.min(volatility24h * 10, 100)}%`;
 }
 
+/**
+ * Update risk bars
+ */
 function updateRiskBars(values) {
     const barVolatility = document.getElementById("bar-volatility");
     const barWhale = document.getElementById("bar-whale");
@@ -1884,7 +2963,9 @@ function updateRiskBars(values) {
     if (barDeviation) barDeviation.style.width = values.deviation + "%";
 }
 
-// Update risk indicators
+/**
+ * Update risk indicators
+ */
 function updateRiskIndicators(data) {
     if (!data) return;
 
@@ -1904,7 +2985,9 @@ function updateRiskIndicators(data) {
     });
 }
 
-// Robust watcher: show footer price when >1/3 of .price-card is hidden
+/**
+ * Setup price visibility watcher
+ */
 function setupPriceVisibilityWatcher() {
     const priceCard = document.querySelector('.price-card');
     const footerBox = document.getElementById('footerLivePriceBox');
@@ -1959,7 +3042,9 @@ function setupPriceVisibilityWatcher() {
     });
 }
 
-// Detect market anomalies
+/**
+ * Detect market anomalies
+ */
 function detectAnomalies(symbol) {
     const data = state.priceData[symbol];
     if (!data) return;
@@ -1992,7 +3077,9 @@ function detectAnomalies(symbol) {
     }
 }
 
-// Update top movers
+/**
+ * Update top movers
+ */
 function updateTopMovers() {
     if (state.isRestoreMode && state.restoreSnapshot) {
         updateTopMoversFromSnapshot(state.restoreSnapshot);
@@ -2017,7 +3104,9 @@ function updateTopMovers() {
     `).join('');
 }
 
-// Update connection status
+/**
+ * Update connection status
+ */
 function updateConnectionStatus(status) {
     const statusEl = document.getElementById('connectionStatus');
     if (!statusEl) return;
@@ -2034,9 +3123,11 @@ function updateConnectionStatus(status) {
     if (txt) txt.textContent = status === 'connected' ? 'Connected' : 'Disconnected';
 }
 
-// Update system health
+/**
+ * Update system health
+ */
 function updateSystemHealth() {
-    if (state.isRestoreMode) return; // Don't update in restore mode
+    if (state.isRestoreMode) return;
 
     const now = Date.now();
 
@@ -2057,7 +3148,9 @@ function updateSystemHealth() {
     if (footerConnectionEl) footerConnectionEl.textContent = connectionStatus;
 }
 
-// Add alert to alert center
+/**
+ * Add alert to alert center
+ */
 function addAlert(message, type = 'info') {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
@@ -2076,7 +3169,9 @@ function addAlert(message, type = 'info') {
     `).join('');
 }
 
-// Setup theme toggle
+/**
+ * Setup theme toggle
+ */
 function setupThemeToggle() {
     const themeBtn = document.getElementById('themeToggle');
     if (!themeBtn) return;
@@ -2089,7 +3184,13 @@ function setupThemeToggle() {
     });
 }
 
-// ----------------- UNIVERSAL SEARCH -----------------
+// ========================================
+// SEARCH FUNCTIONALITY
+// ========================================
+
+/**
+ * Setup search panel
+ */
 function setupSearchPanel() {
     const searchBtn = document.getElementById('searchBtn');
     const searchPanel = document.getElementById('searchPanel');
@@ -2357,7 +3458,9 @@ function setupSearchPanel() {
     renderEmpty();
 }
 
-// Select cryptocurrency from search
+/**
+ * Select cryptocurrency from search
+ */
 function selectCrypto(symbol) {
     const btn = document.querySelector(`[data-symbol="${symbol}"]`);
     if (btn) {
@@ -2367,7 +3470,13 @@ function selectCrypto(symbol) {
     }
 }
 
-// Utility: Format price
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
+
+/**
+ * Format price
+ */
 function formatPrice(price) {
     if (price === null || price === undefined || Number.isNaN(price)) return '--';
 
@@ -2401,7 +3510,9 @@ function formatPrice(price) {
     return `$${formattedPrice}`;
 }
 
-// Utility: Format volume
+/**
+ * Format volume
+ */
 function formatVolume(volume) {
     if (volume === null || volume === undefined || Number.isNaN(volume)) return '--';
     const v = Number(volume);
@@ -2427,15 +3538,19 @@ function formatVolume(volume) {
     }
     return `$${v.toFixed(2)}`;
 }
-// ===============================
-// REAL AI SUMMARY (Hugging Face) - ENHANCED
-// ===============================
+
+// ========================================
+// AI SUMMARY FUNCTIONS
+// ========================================
+
+/**
+ * Generate real AI summary (Hugging Face)
+ */
 async function generateRealAISummary(snapshot) {
     const s = snapshot.snapshot;
     const sym = s.applicationState.currentSymbol;
     const d = s.priceData[sym];
 
-    // Enhanced prompt with more context
     const prompt = `
 Summarize this crypto market briefly:
 Asset: ${s.applicationState.currentName} (${sym})
@@ -2444,15 +3559,12 @@ Price: ${d.price}
 24h Volume: ${d.volume24h}
 `;
 
-
     try {
-        const response = await fetch(
-            "https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt })
-            }
-        );
+        const response = await fetch("https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
+        });
 
         if (!response.ok) {
             throw new Error(`API responded with ${response.status}`);
@@ -2460,7 +3572,6 @@ Price: ${d.price}
 
         const result = await response.json();
 
-        // Ensure we get the summary text
         if (result && result[0] && result[0].summary_text) {
             return result[0].summary_text;
         } else {
@@ -2473,34 +3584,32 @@ Price: ${d.price}
     }
 }
 
-// ===============================
-// CLOSE SUMMARY MODAL - FIXED
-// ===============================
+/**
+ * Close AI summary modal
+ */
 function closeAISummary() {
     const panel = document.getElementById("aiSummaryPanel");
     if (panel) {
         panel.style.display = "none";
-        // Reset dragging state
         aiPanelDragState.isDragging = false;
         document.body.classList.remove('dragging');
     }
 }
-// ===============================
-// UPDATE AI BADGES FROM SNAPSHOT
-// ===============================
+
+/**
+ * Update AI badges from snapshot
+ */
 function updateAIBadges(snapshot) {
     const s = snapshot.snapshot;
     const sym = s.applicationState.currentSymbol;
     const d = s.priceData[sym];
 
-    // Format timestamp
     const timestamp = new Date(s.metadata.snapshotTime);
     const timeEl = document.getElementById('aiSummaryTimestamp');
     if (timeEl) {
         timeEl.textContent = timestamp.toLocaleString();
     }
 
-    // Asset badge
     const assetBadge = document.getElementById('aiBadgeAsset');
     if (assetBadge) {
         assetBadge.innerHTML = `
@@ -2509,7 +3618,6 @@ function updateAIBadges(snapshot) {
         `;
     }
 
-    // Change badge
     const changeBadge = document.getElementById('aiBadgeChange');
     if (changeBadge && d) {
         const change = d.priceChangePercent24h;
@@ -2521,7 +3629,6 @@ function updateAIBadges(snapshot) {
         `;
     }
 
-    // Quality badge
     const qualityBadge = document.getElementById('aiBadgeQuality');
     if (qualityBadge) {
         const quality = s.metadata.snapshotQuality;
@@ -2537,7 +3644,6 @@ function updateAIBadges(snapshot) {
         `;
     }
 
-    // Source badge
     const sourceBadge = document.getElementById('aiBadgeSource');
     if (sourceBadge) {
         const wsStatus = s.metadata.websocketStatus;
@@ -2548,9 +3654,9 @@ function updateAIBadges(snapshot) {
     }
 }
 
-// ===============================
-// FIXED COPY FUNCTION - WORKS RELIABLY
-// ===============================
+/**
+ * Copy AI summary
+ */
 function copyAISummary() {
     const textElement = document.getElementById("aiSummaryText");
     if (!textElement) {
@@ -2564,11 +3670,9 @@ function copyAISummary() {
         return;
     }
 
-    // Try modern clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(textToCopy)
             .then(() => {
-                // Show subtle feedback without interrupting UI
                 const originalText = textElement.textContent;
                 textElement.textContent = "✓ Copied to clipboard!";
                 setTimeout(() => {
@@ -2577,15 +3681,16 @@ function copyAISummary() {
             })
             .catch(err => {
                 console.error("Clipboard API failed:", err);
-                // Fallback to old method
                 fallbackCopy(textToCopy);
             });
     } else {
-        // Fallback for older browsers
         fallbackCopy(textToCopy);
     }
 }
 
+/**
+ * Fallback copy
+ */
 function fallbackCopy(text) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
@@ -2613,9 +3718,9 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
-// ===============================
-// FIXED DOWNLOAD FUNCTION - WORKS RELIABLY
-// ===============================
+/**
+ * Download AI summary
+ */
 function downloadAISummary() {
     const textElement = document.getElementById("aiSummaryText");
     if (!textElement) {
@@ -2630,29 +3735,24 @@ function downloadAISummary() {
     }
 
     try {
-        // Create blob with proper MIME type
         const blob = new Blob([textToDownload], { type: "text/plain;charset=utf-8" });
         const url = URL.createObjectURL(blob);
 
-        // Create filename with timestamp
         const now = new Date();
         const timestamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-');
         const filename = `crypto-view-ai-summary-${timestamp}.txt`;
 
-        // Create and trigger download link
         const a = document.createElement("a");
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
 
-        // Cleanup
         setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 100);
 
-        // Show subtle feedback
         const originalText = textElement.textContent;
         textElement.textContent = "✓ Downloaded!";
         setTimeout(() => {
@@ -2663,148 +3763,10 @@ function downloadAISummary() {
         console.error("Download failed:", error);
     }
 }
-// ===============================
-// SHARE AI SUMMARY FUNCTION
-// ===============================
-function shareAISummary() {
-    const textElement = document.getElementById("aiSummaryText");
-    if (!textElement) {
-        console.error("AI summary text element not found");
-        return;
-    }
 
-    const textToShare = textElement.innerText || textElement.textContent;
-    if (!textToShare || textToShare.trim() === "") {
-        console.warn("No text to share");
-        return;
-    }
-
-    // Create share data
-    const shareData = {
-        title: "Crypto View AI Summary",
-        text: textToShare,
-        url: window.location.href
-    };
-
-    // Try Web Share API first (mobile/desktop with share support)
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-        navigator.share(shareData)
-            .then(() => {
-                // Show subtle feedback
-                const originalText = textElement.textContent;
-                textElement.textContent = "✓ Shared successfully!";
-                setTimeout(() => {
-                    textElement.textContent = originalText;
-                }, 1500);
-            })
-            .catch(err => {
-                console.log("Share cancelled or failed:", err);
-                // Fallback to clipboard
-                fallbackShare(textToShare, textElement);
-            });
-    } else {
-        // Fallback for browsers without Web Share API
-        fallbackShare(textToShare, textElement);
-    }
-}
-
-function fallbackShare(text, textElement) {
-    // Try to copy to clipboard first
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text)
-            .then(() => {
-                const originalText = textElement.textContent;
-                textElement.textContent = "✓ Copied to clipboard! Use Ctrl+V to share.";
-                setTimeout(() => {
-                    textElement.textContent = originalText;
-                }, 2000);
-                addAlert("Summary copied to clipboard - paste it anywhere to share", "success");
-            })
-            .catch(err => {
-                console.error("Clipboard failed:", err);
-                // Last resort: show text in alert
-                const originalText = textElement.textContent;
-                textElement.textContent = "Select and copy text below to share:";
-                setTimeout(() => {
-                    textElement.textContent = originalText;
-                }, 3000);
-                alert("Select and copy the text below to share:\n\n" + text);
-            });
-    } else {
-        // Show text directly
-        const originalText = textElement.textContent;
-        textElement.textContent = "Select and copy text below to share:";
-        setTimeout(() => {
-            textElement.textContent = originalText;
-        }, 3000);
-        alert("Select and copy the text below to share:\n\n" + text);
-    }
-}
-// ===============================
-// FIXED REGENERATE FUNCTION - USES ORIGINAL SNAPSHOT
-// ===============================
-async function regenerateAISummary() {
-    const textBox = document.getElementById("aiSummaryText");
-    const timestampEl = document.getElementById("aiSummaryTimestamp");
-
-    if (!textBox || !timestampEl) {
-        console.error("AI summary elements not found");
-        return;
-    }
-
-    // Store original text for restoration in case of error
-    const originalText = textBox.textContent;
-
-    // Show regenerating state
-    textBox.textContent = "🔄 Regenerating AI summary from snapshot...";
-    timestampEl.textContent = "Regenerating...";
-
-    try {
-        // Use the original snapshot from the session, NOT a new one
-        const snapshot = aiSummarySession.originalSnapshot;
-
-        if (!snapshot) {
-            throw new Error("No original snapshot available for regeneration");
-        }
-
-        // Update badges with the original snapshot data
-        updateAIBadges(snapshot);
-
-        // Generate AI summary using the ORIGINAL snapshot
-        const summary = await generateRealAISummary(snapshot);
-
-        // Format and display
-        const formattedSummary = summary
-            .replace(/\n\s*\n/g, '\n\n')
-            .trim();
-
-        textBox.textContent = formattedSummary;
-
-        // Update session with regenerated text
-        aiSummarySession.summaryText = formattedSummary;
-        aiSummarySession.generatedAt = new Date();
-
-        // Update timestamp
-        timestampEl.textContent = `Regenerated: ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-
-        // Show success alert
-        addAlert("AI summary regenerated from snapshot", "success");
-
-    } catch (error) {
-        console.error("Regeneration error:", error);
-
-        // Restore original text
-        textBox.textContent = originalText;
-        timestampEl.textContent = "Regeneration failed";
-
-        // Show error alert
-        addAlert("Failed to regenerate AI summary", "error");
-    }
-}
-
-// ===============================
-// FIXED AI SUMMARY PANEL DRAG - WORKS ON MOBILE & DESKTOP
-// ===============================
+/**
+ * Setup AI panel drag
+ */
 function setupAIPanelDrag() {
     const panel = document.getElementById("aiSummaryWindow");
     const header = document.getElementById("aiSummaryHeader");
@@ -2814,15 +3776,12 @@ function setupAIPanelDrag() {
         return;
     }
 
-    // Store initial position for bounds checking
     const panelRect = panel.getBoundingClientRect();
     aiPanelDragState.currentX = panelRect.left;
     aiPanelDragState.currentY = panelRect.top;
 
-    // Mouse events for desktop
     header.addEventListener("mousedown", startDrag);
 
-    // Touch events for mobile
     header.addEventListener("touchstart", (e) => {
         e.preventDefault();
         if (e.touches.length === 1) {
@@ -2839,15 +3798,12 @@ function setupAIPanelDrag() {
         e.preventDefault();
         aiPanelDragState.isDragging = true;
 
-        // Get current panel position
         const panelRect = panel.getBoundingClientRect();
         aiPanelDragState.offsetX = e.clientX - panelRect.left;
         aiPanelDragState.offsetY = e.clientY - panelRect.top;
 
-        // Prevent text selection during drag
         document.body.classList.add('dragging');
 
-        // Add event listeners for move and end
         document.addEventListener("mousemove", handleDragMove);
         document.addEventListener("touchmove", handleTouchMove, { passive: false });
         document.addEventListener("mouseup", stopDrag);
@@ -2873,20 +3829,16 @@ function setupAIPanelDrag() {
         const panelWidth = panel.offsetWidth;
         const panelHeight = panel.offsetHeight;
 
-        // Calculate new position
         let newX = clientX - aiPanelDragState.offsetX;
         let newY = clientY - aiPanelDragState.offsetY;
 
-        // Keep panel within viewport bounds
         newX = Math.max(0, Math.min(newX, viewportWidth - panelWidth));
         newY = Math.max(0, Math.min(newY, viewportHeight - panelHeight));
 
-        // Apply new position
         panel.style.left = `${newX}px`;
         panel.style.top = `${newY}px`;
-        panel.style.transform = "none"; // Remove center transform
+        panel.style.transform = "none";
 
-        // Store current position
         aiPanelDragState.currentX = newX;
         aiPanelDragState.currentY = newY;
     }
@@ -2895,7 +3847,6 @@ function setupAIPanelDrag() {
         aiPanelDragState.isDragging = false;
         document.body.classList.remove('dragging');
 
-        // Remove event listeners
         document.removeEventListener("mousemove", handleDragMove);
         document.removeEventListener("touchmove", handleTouchMove);
         document.removeEventListener("mouseup", stopDrag);
@@ -2903,9 +3854,9 @@ function setupAIPanelDrag() {
     }
 }
 
-// ===============================
-// ENHANCED AI SUMMARY BUTTON HANDLER - FIXED FOR JSRE
-// ===============================
+/**
+ * AI summary button handler
+ */
 document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     const panel = document.getElementById("aiSummaryPanel");
     const textBox = document.getElementById("aiSummaryText");
@@ -2916,7 +3867,6 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         return;
     }
 
-    // Show loading state
     panel.style.display = "block";
     textBox.textContent = "Analyzing market data and generating insights...";
     if (timestampEl) {
@@ -2924,55 +3874,43 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     }
 
     try {
-        // Determine which snapshot to use
         let snapshot;
         if (state.isRestoreMode && state.restoreSnapshot) {
-            // JSRE MODE: Use restored snapshot
             snapshot = state.restoreSnapshot;
             aiSummarySession.isJSREMode = true;
             console.log("[AI] Using JSRE restored snapshot");
         } else {
-            // LIVE MODE: Generate new snapshot
             snapshot = generateSnapshot();
             aiSummarySession.isJSREMode = false;
             console.log("[AI] Using live snapshot");
         }
 
-        // Store the ORIGINAL snapshot for regeneration
-        aiSummarySession.originalSnapshot = JSON.parse(JSON.stringify(snapshot)); // Deep clone
+        aiSummarySession.originalSnapshot = JSON.parse(JSON.stringify(snapshot));
         aiSummarySession.generatedAt = new Date();
 
-        // Update badges immediately
         updateAIBadges(snapshot);
 
-        // Generate AI summary
         const summary = await generateRealAISummary(snapshot);
 
-        // Format the summary
         const formattedSummary = summary
             .replace(/\n\s*\n/g, '\n\n')
             .trim();
 
-        // Yield to browser, then animate
         setTimeout(() => {
             showTextWordByWord(textBox, formattedSummary);
         }, 0);
 
-
-        // Update timestamp
         if (timestampEl) {
             const timestamp = aiSummarySession.generatedAt;
             timestampEl.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        // Log success
         console.log("[AI] Summary generated successfully");
 
     } catch (err) {
         console.error("AI summary error:", err);
         textBox.textContent = "⚠️ AI service is currently unavailable. Please try again later.\n\nYou can still view the snapshot data in the badges above.";
 
-        // Show snapshot data as fallback
         try {
             const snapshot = state.isRestoreMode && state.restoreSnapshot ?
                 state.restoreSnapshot :
@@ -2985,9 +3923,9 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     }
 });
 
-// Update the setupFabAutoDiscovery function in app.js
-// Replace the existing function with this improved version:
-
+/**
+ * Setup FAB auto discovery
+ */
 (function setupFabAutoDiscovery() {
     const fabStack = document.querySelector('.fab-stack');
     const mainFab = document.querySelector('.fab.main');
@@ -3012,7 +3950,6 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
 
     function closeFab() {
         fabStack.classList.remove('auto-open');
-        // Only rotate back if not manually hovering
         if (!fabStack.matches(':hover')) {
             rotateMainFab(false);
         }
@@ -3038,29 +3975,19 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         timers.push(t);
     }
 
-    /* -----------------------------------
-       MANUAL HOVER ROTATION
-    ----------------------------------- */
     fabStack.addEventListener('mouseenter', () => {
         rotateMainFab(true);
     });
 
     fabStack.addEventListener('mouseleave', () => {
-        // Only rotate back if not in auto-open mode
         if (!fabStack.classList.contains('auto-open')) {
             rotateMainFab(false);
         }
     });
 
-    /* -----------------------------------
-       PHASE 1: 0–10s (Always visible)
-    ----------------------------------- */
     openFab();
     schedule(10000, closeFab);
 
-    /* -----------------------------------
-       PHASE 2: 11–25s (Every 5s)
-    ----------------------------------- */
     for (let t = 10000; t <= 20000; t += 5000) {
         schedule(t, () => {
             openFab();
@@ -3068,9 +3995,6 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         });
     }
 
-    /* -----------------------------------
-       PHASE 3: 26–55s (Every 10s)
-    ----------------------------------- */
     for (let t = 20000; t <= 65000; t += 15000) {
         schedule(t, () => {
             openFab();
@@ -3078,17 +4002,10 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         });
     }
 
-    /* -----------------------------------
-       FINAL HARD STOP (after 55s)
-    ----------------------------------- */
     schedule(56000, stopAutoLoop);
 
-    /* -----------------------------------
-       USER INTERACTION OVERRIDES AUTO MODE
-    ----------------------------------- */
     mainFab.addEventListener('click', () => {
         stopAutoLoop();
-        // Toggle on click if not in auto mode
         if (!autoLoopActive) {
             if (fabStack.classList.contains('auto-open')) {
                 closeFab();
@@ -3098,26 +4015,31 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
         }
     });
 })();
-// =======================================
-// JSRE OVERLAY FUNCTIONS (Unchanged)
-// =======================================
 
+// ========================================
+// JSRE OVERLAY FUNCTIONS
+// ========================================
+
+/**
+ * Initialize JSRE overlay
+ */
 function initJSREOverlay() {
     JSRE.overlay = document.getElementById("jsreOverlay");
     JSRE.progress = document.getElementById("jsreProgress");
     JSRE.title = document.getElementById("jsreTitle");
     JSRE.subtitle = document.getElementById("jsreSubtitle");
 
-    // Ensure elements exist
     if (!JSRE.overlay || !JSRE.progress || !JSRE.title || !JSRE.subtitle) {
         console.error("[JSRE] Failed to initialize overlay elements");
     }
 }
 
+/**
+ * Show JSRE overlay
+ */
 function showJSRE() {
     console.log("[JSRE] Showing overlay");
 
-    // Ensure overlay is properly initialized
     if (!JSRE.overlay || !JSRE.progress || !JSRE.title || !JSRE.subtitle) {
         console.error("[JSRE] Overlay not properly initialized");
         return;
@@ -3127,11 +4049,9 @@ function showJSRE() {
     JSRE.progress.style.strokeDashoffset = JSRE.circumference;
     JSRE.progress.style.stroke = "var(--color-primary)";
 
-    // 🔥 CRITICAL FIX: Reset title and subtitle to default values
     JSRE.title.textContent = "JSON State Restore Engine";
     JSRE.subtitle.textContent = "Initializing…";
 
-    // Remove any error class if present
     const card = JSRE.overlay.querySelector(".jsre-card");
     if (card) {
         card.classList.remove("jsre-error");
@@ -3140,6 +4060,9 @@ function showJSRE() {
     JSRE.overlay.classList.remove("hidden");
 }
 
+/**
+ * Advance JSRE progress
+ */
 function advanceJSRE(subtitle) {
     console.log(`[JSRE] Phase ${JSRE.phase + 1}: ${subtitle}`);
     JSRE.phase++;
@@ -3153,6 +4076,9 @@ function advanceJSRE(subtitle) {
     }
 }
 
+/**
+ * Show JSRE error
+ */
 function jsreError() {
     console.error("[JSRE] Validation failed - wrong file detected");
 
@@ -3161,7 +4087,6 @@ function jsreError() {
         return;
     }
 
-    // Visual error state
     JSRE.progress.style.stroke = "var(--color-error)";
     JSRE.progress.style.strokeDashoffset = 0;
 
@@ -3173,7 +4098,6 @@ function jsreError() {
         card.classList.add("jsre-error");
     }
 
-    // After animation → redirect to modal
     setTimeout(() => {
         if (JSRE.overlay) {
             JSRE.overlay.classList.add("hidden");
@@ -3183,7 +4107,6 @@ function jsreError() {
             card.classList.remove("jsre-error");
         }
 
-        // 🔥 IMPORTANT: Reset the title and subtitle for next upload
         if (JSRE.title) {
             JSRE.title.textContent = "JSON State Restore Engine";
         }
@@ -3206,9 +4129,12 @@ function jsreError() {
             autoAction: () => {},
             timerFormat: "close"
         });
-    }, 1200); // allows shake + color settle
+    }, 1200);
 }
 
+/**
+ * Show text word by word
+ */
 function showTextWordByWord(element, text) {
     element.textContent = "";
 
@@ -3222,7 +4148,7 @@ function showTextWordByWord(element, text) {
         } else {
             clearInterval(interval);
         }
-    }, 40); // speed (ms)
+    }, 40);
 }
 
 // Make selectCrypto global

@@ -1,3 +1,11 @@
+<!-- 
+  CHANGES MADE:
+  1. Added Share Environment FAB
+  2. Added Exit Restore Mode button in share modal
+  3. Updated share modal layout
+  4. Added AI Summary Share button
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -7,7 +15,9 @@
     <title>Crypto View</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+    <!-- Share Environment Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 
 <body>
@@ -26,7 +36,6 @@
                 </div>
             </div>
         </div>
-
     </header>
     <div class="footer-wrap"></div>
 
@@ -232,152 +241,170 @@
             </div>
         </section>
 
-
-
         <!-- Floating Action Button Stack -->
         <div class="fab-stack">
-
-
-
             <!-- Search -->
             <button class="fab child" id="searchBtn" aria-label="Search">
-        <span class="fab-icon">⌕</span>
-        <span class="fab-tooltip">Search assets, metrics, and analytics</span>
-    </button>
+                <span class="fab-icon">⌕</span>
+                <span class="fab-tooltip">Search assets, metrics, and analytics</span>
+            </button>
             <!-- Theme Toggle -->
             <button class="fab child" id="themeToggle" aria-label="Theme Toggle">
-        <span class="fab-icon">◐</span>
-        <span class="fab-tooltip">Switch between light and dark mode</span>
-    </button>
-
-
-
-
+                <span class="fab-icon">◐</span>
+                <span class="fab-tooltip">Switch between light and dark mode</span>
+            </button>
+            <!-- Currency Toggle -->
+            <button class="fab child" id="currencyToggle" aria-label="Currency Toggle">
+                <span class="fab-icon">₹ / $</span>
+                <span class="fab-tooltip">Toggle price display between INR and USDT</span>
+            </button>
+            <!-- Share Environment -->
+            <button class="fab child" id="shareEnvFab" aria-label="Share Environment">
+                <span class="fab-icon">
+                    <img src="share.png" alt="AI Summary">
+                </span>
+                <span class="fab-tooltip">Share Environment </span>
+            </button>
             <!-- Import Snapshot -->
             <button class="fab child" id="importBtn" aria-label="Import Snapshot">
-   <span class="fab-icon">
-    <img src="monitoring.png" alt="AI Summary">
-  </span>
-        <span class="fab-tooltip">Import and restore a saved market snapshot</span>
-    </button>
+                <span class="fab-icon">
+                    <img src="monitoring.png" alt="AI Summary">
+                </span>
+                <span class="fab-tooltip">Import and restore a saved market snapshot</span>
+            </button>
             <!-- Export Data -->
             <button class="fab child" id="exportBtn" aria-label="Export Snapshot">
-        <span class="fab-icon">⇩</span>
-        <span class="fab-tooltip">Export current market snapshot (PDF / JSON)</span>
-    </button>
+                <span class="fab-icon">
+                    <img src="download.png" alt="AI Summary">
+                </span>
+                <span class="fab-tooltip">Export current market snapshot (PDF / JSON)</span>
+            </button>
             <div class="export-dropdown" id="exportDropdown">
                 <div class="export-option" data-option="pdf">Export as PDF</div>
                 <div class="export-option" data-option="json">Export as JSON</div>
                 <div class="export-option" data-option="both">Export as BOTH</div>
                 <div class="export-option" data-option="cancel">Cancel</div>
             </div>
+            <!-- AI Summary -->
             <button class="fab child" id="aiSummaryBtn" aria-label="AI Summary">
-  <span class="fab-icon">
-    <img src="artificial-intelligence.svg" alt="AI Summary" class="ai-icon">
-  </span>
-  <span class="fab-tooltip">Generate AI-powered market summary</span>
-</button>
-
-            <!-- Currency Toggle -->
-            <button class="fab child" id="currencyToggle" aria-label="Currency Toggle">
-        <span class="fab-icon">₹ / $</span>
-        <span class="fab-tooltip">Toggle price display between INR and USDT</span>
-    </button>
+                <span class="fab-icon">
+                    <img src="artificial-intelligence.svg" alt="AI Summary" class="ai-icon">
+                </span>
+                <span class="fab-tooltip">Generate AI-powered market summary</span>
+            </button>
             <!-- Exit Restore Mode (JSRE only) -->
-<button class="fab child restore-fab" id="restoreFabBtn" aria-label="Exit Restore Mode" style="display:none;">
-    <span class="fab-icon">⏎</span>
-    <span class="fab-tooltip">Exit Restore Mode</span>
-</button>
+            <button class="fab child restore-fab" id="restoreFabBtn" aria-label="Exit Restore Mode" style="display:none;">
+                <span class="fab-icon">⏎</span>
+                <span class="fab-tooltip">Exit Restore Mode</span>
+            </button>
 
             <button class="fab main" aria-label="Actions">
-  <span class="fab-icon">
-    <img src="outdent.png" alt="Actions">
-  </span>
-</button>
-
-
-
+                <span class="fab-icon">
+                    <img src="outdent.png" alt="Actions">
+                </span>
+            </button>
         </div>
 
+        <!-- Export Ready Popup -->
+        <div id="exportReadyPopup" class="export-ready-popup hidden">
+            <div class="export-ready-window">
+                <div class="export-ready-header">
+                    <h3 id="exportReadyTitle">Ready to Export</h3>
+                    <button class="export-ready-close">✕</button>
+                </div>
+                <div class="export-ready-body">
+                    <div class="export-ready-info">
+                        <p>Your export is ready. Choose an action:</p>
+                    </div>
+                    <div class="export-ready-actions">
 
+                        <button class="export-ready-action primary" data-action="download">
+                            <span>↓</span> Download
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Shared Link Popup (opens when restoring from #env link) -->
+
+
+        <!-- AI Summary Panel -->
         <div id="aiSummaryPanel" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;">
             <div id="aiSummaryWindow" style="
-        width:520px;
-        max-width:90vw;
-        min-width:320px;
-        min-height:220px;
-        background:var(--color-surface);
-        border-radius:14px;
-        box-shadow:var(--shadow-lg);
-        position:absolute;
-        top:15%;
-        left:50%;
-        transform:translateX(-50%);
-        resize:both;
-        overflow:auto;
-        display:flex;
-        flex-direction:column;
-       ">
-
+                width:520px;
+                max-width:90vw;
+                min-width:320px;
+                min-height:220px;
+                background:var(--color-surface);
+                border-radius:14px;
+                box-shadow:var(--shadow-lg);
+                position:absolute;
+                top:15%;
+                left:50%;
+                transform:translateX(-50%);
+                resize:both;
+                overflow:auto;
+                display:flex;
+                flex-direction:column;
+            ">
                 <!-- HEADER (DRAG HANDLE) -->
                 <div id="aiSummaryHeader" style="
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          padding:16px;
-          border-bottom:1px solid var(--color-border);
-          cursor:move;
-          background:var(--color-surface);
-          border-radius:14px 14px 0 0;
-         ">
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
+                    padding:16px;
+                    border-bottom:1px solid var(--color-border);
+                    cursor:move;
+                    background:var(--color-surface);
+                    border-radius:14px 14px 0 0;
+                ">
                     <div style="display:flex;align-items:center;gap:12px;">
                         <div class="ai-icon-wrapper">
                             <img src="artificial-intelligence.svg" class="ai-icon">
-
                         </div>
-
                         <div>
                             <div style="font-weight:600;color:var(--color-text);">Market Summary</div>
                             <div style="font-size:12px;color:var(--color-text-secondary);" id="aiSummaryTimestamp"></div>
                         </div>
                     </div>
                     <button onclick="
-    event.preventDefault();
-    event.stopPropagation();
-    document.getElementById('aiSummaryPanel').style.display = 'none';
-  " ontouchstart="event.stopPropagation();" ontouchend="
-    event.preventDefault();
-    event.stopPropagation();
-    document.getElementById('aiSummaryPanel').style.display = 'none';
-  " style="
-    background:var(--color-secondary);
-    border:none;
-    width:32px;
-    height:32px;
-    border-radius:8px;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:var(--color-text);
-    transition:background var(--duration-fast) var(--ease-standard);
-  ">
-  ✕
-</button>
-
+                        event.preventDefault();
+                        event.stopPropagation();
+                        document.getElementById('aiSummaryPanel').style.display = 'none';
+                    " ontouchstart="event.stopPropagation();" ontouchend="
+                        event.preventDefault();
+                        event.stopPropagation();
+                        document.getElementById('aiSummaryPanel').style.display = 'none';
+                    " style="
+                        background:var(--color-secondary);
+                        border:none;
+                        width:32px;
+                        height:32px;
+                        border-radius:8px;
+                        cursor:pointer;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        color:var(--color-text);
+                        transition:background var(--duration-fast) var(--ease-standard);
+                    ">
+                        ✕
+                    </button>
                 </div>
 
                 <!-- CONTENT BODY -->
                 <div style="padding:20px;flex:1;overflow-y:auto;">
                     <!-- DATA BADGES -->
                     <div style="
-                display:flex;
-                flex-wrap:wrap;
-                gap:8px;
-                margin-bottom:20px;
-                padding-bottom:16px;
-                border-bottom:1px solid var(--color-border);
-            ">
+                        display:flex;
+                        flex-wrap:wrap;
+                        gap:8px;
+                        margin-bottom:20px;
+                        padding-bottom:16px;
+                        border-bottom:1px solid var(--color-border);
+                    ">
                         <div class="ai-badge" id="aiBadgeAsset"></div>
                         <div class="ai-badge" id="aiBadgeChange"></div>
                         <div class="ai-badge" id="aiBadgeQuality"></div>
@@ -387,66 +414,67 @@
                     <!-- AI RESPONSE TEXT -->
                     <div style="margin-bottom:24px;">
                         <p id="aiSummaryText" style="
-                    line-height:1.6;
-                    font-size:14px;
-                    color:var(--color-text);
-                    margin:0;
-                    white-space:pre-wrap;
-                    font-family:var(--font-family-base);
-                ">
+                            line-height:1.6;
+                            font-size:14px;
+                            color:var(--color-text);
+                            margin:0;
+                            white-space:pre-wrap;
+                            font-family:var(--font-family-base);
+                        ">
                             Generating AI summary…
                         </p>
                     </div>
 
                     <!-- STATUS FOOTER -->
                     <div style="
-                font-size:12px;
-                color:var(--color-text-secondary);
-                display:flex;
-                align-items:center;
-                gap:8px;
-                padding:12px;
-                background:var(--color-secondary);
-                border-radius:8px;
-                margin-bottom:16px;
-            ">
+                        font-size:12px;
+                        color:var(--color-text-secondary);
+                        display:flex;
+                        align-items:center;
+                        gap:8px;
+                        padding:12px;
+                        background:var(--color-secondary);
+                        border-radius:8px;
+                        margin-bottom:16px;
+                    ">
                         <span></span>
-                        <span>AI Text Summarization • For analytics only •  Not financial advice.</span>
+                        <span>AI Text Summarization • For analytics only • Not financial advice.</span>
                     </div>
                 </div>
 
                 <!-- ACTION BAR -->
                 <div style="
-            padding:16px 20px;
-            border-top:1px solid var(--color-border);
-            background:var(--color-surface);
-            border-radius:0 0 14px 14px;
-            display:flex;
-            flex-wrap:wrap;
-            gap:10px;
-            justify-content:flex-end;
-            align-items:center;
-        ">
+                    padding:16px 20px;
+                    border-top:1px solid var(--color-border);
+                    background:var(--color-surface);
+                    border-radius:0 0 14px 14px;
+                    display:flex;
+                    flex-wrap:wrap;
+                    gap:10px;
+                    justify-content:flex-end;
+                    align-items:center;
+                ">
                     <div style="flex:1; font-size:12px; color:var(--color-text-secondary);">
                         Powered by
                         <a href="https://huggingface.co" target="_blank" rel="noopener noreferrer" class="hf-link">
-    HuggingFace
-  </a>
+                            HuggingFace
+                        </a>
                     </div>
 
                     <div style="display:flex; gap:10px;">
                         <button onclick="copyAISummary()" class="ai-btn primary">
-                    <span>⧉</span> Copy
-                </button>
+                            <span>⧉</span> Copy
+                        </button>
+                        <button onclick="shareAISummary()" class="ai-btn">
+                            <span>↗</span> Share
+                        </button>
                         <button onclick="downloadAISummary()" class="ai-btn">
-                    <span>⇩</span> Download
-                
+                            <span>⇩</span> Download
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
-
-
 
         <!-- Hidden file input for import -->
         <input type="file" id="importFileInput" accept=".json" style="display: none;">
@@ -456,146 +484,209 @@
             <div class="search-panel-header">
                 <h3>Crypto Search</h3>
                 <button class="close-btn" id="closeSearch">✕</button>
+            </div>
+            <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
+            <div class="search-results" id="searchResults">
+                <div class="search-result-item">Start typing to search...</div>
+            </div>
+        </div>
+
+        <!-- Share Environment Modal -->
+        <div id="shareEnvModal" class="share-modal hidden" role="dialog" aria-labelledby="share-modal-title" aria-modal="true">
+            <div class="share-modal-backdrop"></div>
+            <div class="share-modal-window">
+                <div class="share-modal-header">
+                    <h2 id="share-modal-title" class="share-modal-title">Crypto Statistic Environment</h2>
+                    <button class="share-modal-close" aria-label="Close modal">✕</button>
+                </div>
+
+                <!-- Updated Share Modal Body Section -->
+                <div class="share-modal-body">
+                    <!-- Share Link -->
+                    <div class="share-link-section">
+                        <label for="shareLinkInput" class="share-label">Shareable Link:</label>
+                        <div class="share-link-input-wrapper">
+                            <input type="text" id="shareLinkInput" class="share-link-input" readonly>
+                            <button class="share-copy-btn">Copy Link</button>
+                        </div>
                     </div>
-                    <input type="text" class="search-input" id="searchInput" placeholder="Search cryptocurrencies and metrics...">
-                    <div class="search-results" id="searchResults">
-                        <div class="search-result-item">Start typing to search...</div>
+
+                    <!-- Stats Section - Now 2 rows x 3 columns -->
+                    <div class="share-stats-section">
+                        <h3 class="share-stats-title">Snapshot Statistics</h3>
+                        <div class="share-stats-grid">
+                            <div class="share-stat-item">
+                                <span class="share-stat-label">Asset:</span>
+                                <span id="share-stat-asset" class="share-stat-value">BTC/USDT</span>
+                            </div>
+                            <div class="share-stat-item">
+                                <span class="share-stat-label">Price:</span>
+                                <span id="share-stat-price" class="share-stat-value">$--</span>
+                            </div>
+                            <div class="share-stat-item">
+                                <span class="share-stat-label">24h Volatility:</span>
+                                <span id="share-stat-volatility" class="share-stat-value">--%</span>
+                            </div>
+                            <div class="share-stat-item">
+                                <span class="share-stat-label">Bid/Ask Imbalance:</span>
+                                <span id="share-stat-imbalance" class="share-stat-value">--%</span>
+                            </div>
+                            <div class="share-stat-item">
+                                <span class="share-stat-label">Snapshot Time:</span>
+                                <span id="share-stat-timestamp" class="share-stat-value">--</span>
+                            </div>
+                            <div class="share-stat-item">
+                                <span class="share-stat-label">Data Quality:</span>
+                                <span id="share-stat-quality" class="share-stat-value">--</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Footer -->
-                <footer class="footer">
-                    <div class="footer-content">
-                        <div class="footer-item">
-                            <span class="footer-label">Connection</span>
-                            <span class="footer-value" id="footerConnection">Active</span>
-                        </div>
-                        <div class="footer-item">
-                            <span class="footer-label">Latency</span>
-                            <span class="footer-value" id="latency">--ms</span>
-                        </div>
-                        <div class="footer-item">
-                            <span class="footer-label">Data Points</span>
-                            <span class="footer-value" id="dataPoints">0</span>
-                        </div>
-                        <div class="footer-item" id="footerLivePriceBox" style="display:none;">
-                            <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
+                <div class="share-modal-footer">
+                    <div class="share-footer-info">
+                        <small>Encoded in URL hash • Compressed with LZ-String • For analytics only</small>
+                        <div id="share-exit-restore-container" style="margin-top: 8px; display: none;">
+                            <button id="shareExitRestoreBtn" class="secondary-btn">Exit Restore Mode</button>
                         </div>
                     </div>
-                </footer>
-
-                <!-- Copyright Footer -->
-                <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
-                    <!-- Top Grid Section -->
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
-                        <!-- Domains & Technologies -->
-                        <div>
-                            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                                Brought to you by
-                            </h4>
-                            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                                <a href="https://github.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
-            GitHub
-        </a>
-                                <a href="https://www.cloudflare.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
-            Cloudflare
-        </a>
-                                <a href="https://ajith-data-analyst.github.io/Portfolio/home.html" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
-            Ajith Ramesh
-        </a>
-                                <a href="https://www.flaticon.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
-            Flaticon
-        </a>
-                            </div>
-                        </div>
-
-                        <!-- Status -->
-                        <div>
-                            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                                Status
-                            </h4>
-                            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                                <div style="font-size: var(--font-size-sm);">
-                                    Proxy:
-                                    <a href="https://crypto-ai-proxy.ajithramesh2020.workers.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-success); font-weight: var(--font-weight-bold); text-decoration: none;">
-                                        <span id="footerStatus">Cloudflare</span>
-                                    </a>
-                                </div>
-
-                                <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
-                                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
-                                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
-
-                            </div>
-                        </div>
-                        <!-- APIs -->
-                        <div>
-                            <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
-                                APIs
-                            </h4>
-                            <div style="display: flex; flex-direction: column; gap: var(--space-4);">
-                                <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
-                                <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
-                                <a href="https://www.exchangerate-api.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Exchange Rate</a>
-                                <a href="https://www.huggingfaceapi.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">HuggingFace</a>
-                            </div>
-                        </div>
-
-
-                    </div>
-
-                    <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
-                        <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
-                © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
-            </a>
-                    </div>
-                </footer>
-
-                <!-- JSON Decision Modal (required for JSRE) -->
-                <div id="jsonDecisionModal" class="json-modal" style="display: none;">
-                    <div class="json-modal-backdrop"></div>
-                    <div class="json-modal-window">
-                        <h2 id="jsonModalTitle"></h2>
-                        <p id="jsonModalDesc"></p>
-                        <div id="jsonModalTimer" class="json-modal-timer"></div>
-                        <div class="json-modal-actions">
-                            <button id="jsonPrimaryBtn" class="primary-btn"></button>
-                            <button id="jsonSecondaryBtn" class="secondary-btn"></button>
-                        </div>
+                    <div class="share-modal-actions">
+                        <button class="share-share-btn primary-btn">Share via App</button>
                     </div>
                 </div>
-                <!-- JSRE Restore Overlay -->
-                <div id="jsreOverlay" class="jsre-overlay hidden">
-                    <div class="jsre-card">
-                        <svg class="jsre-ring" width="180" height="180">
-      <circle
-        cx="90"
-        cy="90"
-        r="70"
-        fill="none"
-        stroke="var(--color-border)"
-        stroke-width="10"
-      />
-      <circle
-        id="jsreProgress"
-        cx="90"
-        cy="90"
-        r="70"
-        fill="none"
-        stroke="var(--color-primary)"
-        stroke-width="10"
-        stroke-linecap="round"
-        stroke-dasharray="439.8"
-        stroke-dashoffset="439.8"
-      />
-    </svg>
+            </div>
+        </div>
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-item">
+                    <span class="footer-label">Connection</span>
+                    <span class="footer-value" id="footerConnection">Active</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Latency</span>
+                    <span class="footer-value" id="latency">--ms</span>
+                </div>
+                <div class="footer-item">
+                    <span class="footer-label">Data Points</span>
+                    <span class="footer-value" id="dataPoints">0</span>
+                </div>
+                <div class="footer-item" id="footerLivePriceBox" style="display:none;">
+                    <span class="footer-value" id="footerLivePrice" style="font-size:30px; font-weight:1500;">$--</span>
+                </div>
+            </div>
+        </footer>
 
-                        <h2 id="jsreTitle">JSON State Restore Engine</h2>
-                        <p id="jsreSubtitle">Initializing…</p>
+        <!-- Copyright Footer -->
+        <footer style="margin-top: var(--space-24); padding: var(--space-24); background: var(--color-surface); border-radius: var(--radius-lg); border: 1px solid var(--color-card-border); text-align: center;" role="contentinfo" aria-label="Footer information">
+            <!-- Top Grid Section -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-24); margin-bottom: var(--space-16);">
+                <!-- Domains & Technologies -->
+                <div>
+                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                        Brought to you by
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        <a href="https://github.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+                            GitHub
+                        </a>
+                        <a href="https://www.cloudflare.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+                            Cloudflare
+                        </a>
+                        <a href="https://ajith-data-analyst.github.io/Portfolio/home.html" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+                            Ajith Ramesh
+                        </a>
+                        <a href="https://www.flaticon.com" target="_blank" rel="noopener noreferrer" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;">
+                            Flaticon
+                        </a>
                     </div>
                 </div>
 
-                <script src="app.js"></script>
+                <!-- Status -->
+                <div>
+                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                        Status
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        <div style="font-size: var(--font-size-sm);">
+                            Proxy:
+                            <a href="https://crypto-ai-proxy.ajithramesh2020.workers.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-success); font-weight: var(--font-weight-bold); text-decoration: none;">
+                                <span id="footerStatus">Cloudflare</span>
+                            </a>
+                        </div>
+
+                        <div style="font-size: var(--font-size-sm);">Status: <span id="footerStatus" style="color: var(--color-success); font-weight: var(--font-weight-bold);">Live</span></div>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Built with real-time market data</div>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">Not financial advice</div>
+                    </div>
+                </div>
+                <!-- APIs -->
+                <div>
+                    <h4 style="font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-8); color: var(--color-text);">
+                        APIs
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                        <a href="https://www.binance.com/en/binance-api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Binance</a>
+                        <a href="https://www.coingecko.com/en/api" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">CoinGecko</a>
+                        <a href="https://www.exchangerate-api.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">Exchange Rate</a>
+                        <a href="https://www.huggingfaceapi.com/" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none;" target="_blank">HuggingFace</a>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding-top: var(--space-16); border-top: 1px solid var(--color-card-border-inner); padding-bottom: 0;">
+                <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt" style="font-size: var(--font-size-sm); color: var(--color-text-secondary); text-decoration: none; margin: 0; text-align: center; display: block;">
+                    © 2025 Crypto View | All rights reserved | Live Crypto Price Analytics
+                </a>
+            </div>
+        </footer>
+
+        <!-- JSON Decision Modal (required for JSRE) -->
+        <div id="jsonDecisionModal" class="json-modal" style="display: none;">
+            <div class="json-modal-backdrop"></div>
+            <div class="json-modal-window">
+                <h2 id="jsonModalTitle"></h2>
+                <p id="jsonModalDesc"></p>
+                <div id="jsonModalTimer" class="json-modal-timer"></div>
+                <div class="json-modal-actions">
+                    <button id="jsonPrimaryBtn" class="primary-btn"></button>
+                    <button id="jsonSecondaryBtn" class="secondary-btn"></button>
+                </div>
+            </div>
+        </div>
+        <!-- JSRE Restore Overlay -->
+        <div id="jsreOverlay" class="jsre-overlay hidden">
+            <div class="jsre-card">
+                <svg class="jsre-ring" width="180" height="180">
+                    <circle
+                        cx="90"
+                        cy="90"
+                        r="70"
+                        fill="none"
+                        stroke="var(--color-border)"
+                        stroke-width="10"
+                    />
+                    <circle
+                        id="jsreProgress"
+                        cx="90"
+                        cy="90"
+                        r="70"
+                        fill="none"
+                        stroke="var(--color-primary)"
+                        stroke-width="10"
+                        stroke-linecap="round"
+                        stroke-dasharray="439.8"
+                        stroke-dashoffset="439.8"
+                    />
+                </svg>
+
+                <h2 id="jsreTitle">JSON State Restore Engine</h2>
+                <p id="jsreSubtitle">Initializing…</p>
+            </div>
+        </div>
+
+        <script src="app.js"></script>
+    </main>
 </body>
 
 </html>
