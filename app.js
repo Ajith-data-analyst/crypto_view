@@ -1,13 +1,8 @@
+// app.js
 // Changes Made:
-// 1. Added staged loader helper function
-// 2. Updated currency toggle with staged loader
-// 3. Added AI Summary Share button functionality
-// 4. Added export loaders and ready popup
-// 5. Added Share Environment FAB with loader
-// 6. Updated share modal layout and hover behavior
-// 7. Added shared link opening behavior
-// 8. Added exit restore mode in shareable link context
-// 9. Updated JSON decision modal for consistency
+// 1. Fixed Exit Restore Mode button in FAB section (Crypto Statistic Environment)
+// 2. Updated crypto selector to update derived metrics when switching coins in both live and restore modes
+// 3. Fixed derived metrics sourcing from stored JSON data in JSRE mode
 
 // Debug flag for share feature
 const SHARE_DEBUG = true;
@@ -109,15 +104,17 @@ const APP_VERSION = '1.0';
  * @returns {Promise} resolves when loader completes
  */
 function showStagedLoader(options) {
-    const { stages, totalMs, title, tagline } = options;
+    const { stages, totalMs, title } = options;
     const stageCount = stages.length;
     const stageDuration = totalMs / stageCount;
 
     // Use existing JSRE overlay
     if (JSRE.overlay && JSRE.title && JSRE.subtitle && JSRE.progress) {
         JSRE.overlay.classList.remove('hidden');
-        JSRE.title.textContent = title;
-        JSRE.subtitle.textContent = `${tagline} — ${stages[0]} (1/${stageCount})`;
+
+        // INITIAL STATE
+        JSRE.title.textContent = stages[0]; // STAGE replaces title
+        JSRE.subtitle.textContent = title; // TITLE replaces stages
         JSRE.progress.style.strokeDashoffset = JSRE.circumference;
         JSRE.progress.style.stroke = "var(--color-primary)";
 
@@ -126,13 +123,21 @@ function showStagedLoader(options) {
         return new Promise((resolve) => {
             const advanceStage = () => {
                 currentStage++;
+
                 if (currentStage < stageCount) {
-                    const progressOffset = JSRE.circumference - (JSRE.circumference / stageCount) * currentStage;
+                    const progressOffset =
+                        JSRE.circumference -
+                        (JSRE.circumference / stageCount) * currentStage;
+
                     JSRE.progress.style.strokeDashoffset = progressOffset;
-                    JSRE.subtitle.textContent = `${tagline} — ${stages[currentStage]} (${currentStage + 1}/${stageCount})`;
+
+                    // UPDATE STAGE TEXT
+                    JSRE.title.textContent = stages[currentStage];
+                    JSRE.subtitle.textContent = title;
+
                     setTimeout(advanceStage, stageDuration);
                 } else {
-                    // Complete
+                    // COMPLETE
                     JSRE.progress.style.strokeDashoffset = 0;
                     setTimeout(() => {
                         JSRE.overlay.classList.add('hidden');
@@ -140,14 +145,16 @@ function showStagedLoader(options) {
                     }, stageDuration);
                 }
             };
+
             setTimeout(advanceStage, stageDuration);
         });
     } else {
-        // Fallback: simple setTimeout
+        // Fallback
         console.log(`[STAGED LOADER] ${title}: ${stages.join(' → ')}`);
         return new Promise(resolve => setTimeout(resolve, totalMs));
     }
 }
+
 // STEP 2.1 — Create TinyURL
 async function createTinyUrl(longUrl) {
     const response = await fetch(
@@ -503,9 +510,9 @@ function openShareModal(link, snapshot, options = {}) {
     const modalTitle = shareState.modal.querySelector('.share-modal-title');
     if (modalTitle) {
         if (state.restoredFromLink) {
-            modalTitle.textContent = 'Crypto Statistic Environment (Restored)';
+            modalTitle.textContent = 'Crypto Session Rendering Engine β (Restored)';
         } else {
-            modalTitle.textContent = 'Crypto Statistic Environment';
+            modalTitle.textContent = 'Crypto Session Rendering Engine β';
         }
     }
 
@@ -707,8 +714,18 @@ function setupShareEnvFab() {
 
     shareEnvFab.addEventListener('click', async() => {
         await showStagedLoader({
-            stages: ['Preparing snapshot', 'Compressing data', 'Generating QR code', 'Finalizing'],
-            totalMs: 8000,
+            // 6. ENTIRE CRYPTO ENVIRONMENT SHARING (7 STEPS)
+            // 6. ENTIRE CRYPTO ENVIRONMENT SHARING (7)
+            stages: [
+                'CAPTURING FULL APPLICATION SNAPSHOT',
+                'EXECUTING DATA SANITIZATION LAYER',
+                'COMPRESSING SNAPSHOT PAYLOAD',
+                'ENCODING TRANSFERABLE STATE',
+                'MATERIALIZING SHAREABLE URL',
+                'COMMITTING SHARE ENVIRONMENT UI'
+            ],
+
+            totalMs: 15000,
             title: 'Preparing share environment',
             tagline: 'Generating shareable link'
         });
@@ -764,7 +781,23 @@ function setupCurrencyToggle() {
         const isToINR = targetCurrency === 'INR';
 
         // Show staged loader
-        const stages = isToINR ? ['Connecting to currency feed', 'Initializing conversion layer', 'Ready to use'] : ['Disconnecting local currency feed', 'Contacting Binance market data', 'Ready to use'];
+        const stages = isToINR ? // 4. CURRENCY CONVERSION — USDT TO INR (5 STEPS)
+            // 4. CURRENCY CONVERSION — USDT TO INR (5)
+            [
+                'RESOLVING USDT PRICE FEED',
+                'VALIDATING CONVERSION PARAMETERS',
+                'EXECUTING RATE TRANSFORMATION',
+                'APPLYING PRECISION NORMALIZATION',
+                'UPDATING UI '
+            ] :
+
+            [
+                'RESOLVING INR PRICE FEED',
+                'VALIDATING INPUT AMOUNT',
+                'EXECUTING INVERSE RATE COMPUTATION',
+                'NORMALIZING DECIMAL PRECISION',
+                'UPDATING UI'
+            ];
 
         const tagline = isToINR ?
             'Switching display to INR — live conversion in progress' :
@@ -1002,10 +1035,17 @@ function setupExportDropdown() {
                 case 'pdf':
                     exportDropdown.classList.remove('active');
                     await showStagedLoader({
-                        stages: ['Preparing document', 'Formatting content', 'Rendering pages', 'Finalizing export'],
-                        totalMs: 8000,
+                        // 1. PDF EXPORT (5)
+                        stages: [
+                            'INITIALIZING PDF RENDER',
+                            'BUILDING DOCUMENT LAYOUT',
+                            'RENDERING VISUAL NODES',
+                            'OPTIMIZING EMBEDDED ASSETS',
+                            'COMPUTING PDF BINARY OUTPUT'
+                        ],
+                        totalMs: 10000,
                         title: 'Preparing PDF export',
-                        tagline: 'Generating PDF document'
+                        tagline: ''
                     });
                     showReadyExportPopup('pdf', generateSnapshot());
                     break;
@@ -1013,7 +1053,16 @@ function setupExportDropdown() {
                 case 'json':
                     exportDropdown.classList.remove('active');
                     await showStagedLoader({
-                        stages: ['Preparing document', 'Formatting content', 'Rendering pages', 'Finalizing export'],
+                        // 2. JSON EXPORT (5 STEPS)
+                        // 2. JSON EXPORT (5)
+                        stages: [
+                            'SNAPSHOTTING APP',
+                            'CONSTRUCTING JSON DATA GRAPH',
+                            'EXECUTING SANITIZATION PASS',
+                            'ENCODING AND COMPRESSING PAYLOAD',
+                            'COMMITTING JSON EXPORT ARTIFACT'
+                        ],
+
                         totalMs: 8000,
                         title: 'Preparing JSON export',
                         tagline: 'Generating JSON snapshot'
@@ -1024,8 +1073,16 @@ function setupExportDropdown() {
                 case 'both':
                     exportDropdown.classList.remove('active');
                     await showStagedLoader({
-                        stages: ['Preparing document', 'Formatting content', 'Rendering pages', 'Finalizing export', 'Creating bundle'],
-                        totalMs: 10000,
+                        // 3. PDF AND JSON EXPORT (5 STEPS)
+                        // 3. PDF + JSON EXPORT (5)
+                        stages: [
+                            'INITIALIZING UNIFIED RENDER',
+                            'EXECUTING PDF RENDER PIPELINE',
+                            'EXECUTING JSON SERIALIZATION PIPELINE',
+                            'PACKAGING EXPORT ARTIFACTS',
+                            'FINALIZING EXPORT BUNDLE'
+                        ],
+                        totalMs: 12000,
                         title: 'Preparing export bundle',
                         tagline: 'Generating PDF and JSON'
                     });
@@ -1108,7 +1165,7 @@ function showSharedLinkPopup(link) {
         shareBtn.onclick = () => {
             if (navigator.share) {
                 navigator.share({
-                    title: 'Crypto Statistic Environment',
+                    title: 'Crypto Session Rendering Engine β',
                     text: 'Check out this crypto market environment',
                     url: link
                 });
@@ -1331,26 +1388,68 @@ function setupCryptoSelector() {
         }
 
         btn.addEventListener('click', () => {
+            // JSRE / CSRE: block symbols not present in snapshot
             if (state.isRestoreMode && state.restoreSnapshot) {
-                const availableSymbols = Object.keys(state.restoreSnapshot.snapshot.priceData || {});
+                const availableSymbols = Object.keys(
+                    state.restoreSnapshot.snapshot.priceData || {}
+                );
+
                 if (!availableSymbols.includes(btn.dataset.symbol)) {
-                    addAlert(`Symbol ${btn.dataset.symbol} not available in restored snapshot`, 'warning');
+                    addAlert(
+                        `Symbol ${btn.dataset.symbol} not available in restored snapshot`,
+                        'warning'
+                    );
                     return;
                 }
             }
 
+            // UI state
             buttons.forEach(b => b.classList.remove('active', 'hidden'));
             btn.classList.add('active', 'hidden');
 
+            // Update runtime selection
             state.currentSymbol = btn.dataset.symbol;
             state.currentName = btn.dataset.name;
             state.currentIcon = btn.dataset.icon;
 
+            // 🔑 CRITICAL ADDITION:
+            // Keep restore snapshot applicationState aligned with user selection
+            if (
+                state.isRestoreMode &&
+                state.restoreSnapshot &&
+                state.restoreSnapshot.snapshot &&
+                state.restoreSnapshot.snapshot.applicationState
+            ) {
+                state.restoreSnapshot.snapshot.applicationState.currentSymbol = state.currentSymbol;
+                state.restoreSnapshot.snapshot.applicationState.currentName = state.currentName;
+                state.restoreSnapshot.snapshot.applicationState.currentIcon = state.currentIcon;
+            }
+
             updatePriceDisplay();
+
+            // Update derived metrics based on mode
+            if (state.isRestoreMode && state.restoreSnapshot) {
+                // Use stored derived metrics from JSON snapshot
+                updateMicrostructureFromSnapshot(state.restoreSnapshot);
+                updateVolatilityFromSnapshot(state.restoreSnapshot);
+                updateRiskIndicatorsFromSnapshot(state.restoreSnapshot);
+                updateAnomaliesFromSnapshot(state.restoreSnapshot);
+            } else {
+                // Live mode: recalculate derived metrics
+                const data = state.priceData[state.currentSymbol];
+                if (data) {
+                    updateMarketMicrostructure(data);
+                    updateVolatilityMetrics(data);
+                    updateRiskIndicators(data);
+                    detectAnomalies(state.currentSymbol);
+                }
+            }
+
             addAlert(`Switched to ${state.currentName}`, 'info');
         });
     });
 }
+
 
 let jsonModalTimerId = null;
 let jsonModalCountdownId = null;
@@ -2178,28 +2277,11 @@ function enterRestoreMode(snapshot) {
     // Update time display from snapshot (ONCE)
     updateDateTimeFromSnapshot(snapshot);
 
-    // ... rest of existing function ...
-
-    const indicator = document.getElementById('restoreModeIndicator');
-    const restoreText = document.getElementById('restoreModeText');
-    const exitBtn = document.getElementById('exitRestoreModeBtn');
-
+    // Show restore mode UI elements
     const restoreFab = document.getElementById('restoreFabBtn');
     if (restoreFab) {
         restoreFab.style.display = 'flex';
         restoreFab.onclick = exitRestoreMode;
-    }
-
-    if (indicator) {
-        indicator.style.display = 'block';
-
-        const snapshotDate = new Date(snapshot.snapshot.metadata.snapshotTime);
-        restoreText.textContent =
-            `RESTORED FROM SNAPSHOT (${snapshotDate.toLocaleString()}) — LIVE DATA DISABLED`;
-
-        if (exitBtn) {
-            exitBtn.onclick = exitRestoreMode;
-        }
     }
 
     updateConnectionStatus('restored');
@@ -2218,10 +2300,8 @@ function exitRestoreMode() {
     state.restoreSnapshot = null;
     state.restoredFromLink = false;
 
-    const indicator = document.getElementById('restoreModeIndicator');
-    if (indicator) {
-        indicator.style.display = 'none';
-    }
+    // Clear the URL hash
+    window.location.hash = '';
 
     const restoreFab = document.getElementById('restoreFabBtn');
     if (restoreFab) {
@@ -2234,14 +2314,14 @@ function exitRestoreMode() {
         exitRestoreContainer.style.display = 'none';
     }
 
-    // Reset time display to live updates
+    // Reset time updates to live mode
     setupTimeUpdates();
 
     console.log("[JSRE] Restarting live data...");
     // Reconnect to live data
+    updateConnectionStatus('connecting');
     connectWebSocket();
     fetchAllCryptoData();
-    // Don't reload page - just switch back to live mode
     addAlert("Switched back to live mode", "success");
 }
 /**
@@ -2283,7 +2363,7 @@ function updateUIFromSnapshot(snapshot) {
 
         const themeBtn = document.getElementById('themeToggle');
         if (themeBtn) {
-            themeBtn.querySelector('.fab-icon').textContent = state.theme === 'light' ? '🌙' : '◐';
+            themeBtn.querySelector('.fab-icon').textContent = state.theme === 'light' ? '◐' : '◐';
         }
     }
 
@@ -2746,49 +2826,97 @@ function handleTickerUpdate(data) {
  * Fetch data from CoinGecko as fallback
  */
 async function fetchAllCryptoData() {
+    // Do not fetch during restore
     if (state.isRestoreMode) return;
 
+    // Do not fetch if WebSocket is active
+    if (state.ws && state.ws.readyState === WebSocket.OPEN) return;
+
     try {
-        const ids = 'bitcoin,ethereum,cardano,polkadot,solana,binancecoin,ripple,dogecoin,matic-network,litecoin';
-        const response = await fetch(
-            `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24h_vol=true&include_24h_change=true&include_24h_high=true&include_24h_low=true`
-        );
+        const PROXY_URL =
+            'https://coingecko-proxy.ajithramesh2020.workers.dev';
+
+        const ids =
+            'bitcoin,ethereum,cardano,polkadot,solana,binancecoin,ripple,dogecoin,matic-network,litecoin';
+
+        const params = new URLSearchParams({
+            ids,
+            vs_currencies: 'usd',
+            include_24h_vol: 'true',
+            include_24h_change: 'true',
+            include_24h_high: 'true',
+            include_24h_low: 'true'
+        });
+
+        const response = await fetch(`${PROXY_URL}?${params.toString()}`);
+
+        if (!response.ok) {
+            throw new Error(`Proxy error ${response.status}`);
+        }
+
         const data = await response.json();
 
         const mapping = {
-            'bitcoin': 'BTC',
-            'ethereum': 'ETH',
-            'cardano': 'ADA',
-            'polkadot': 'DOT',
-            'solana': 'SOL',
-            'binancecoin': 'BNB',
-            'ripple': 'XRP',
-            'dogecoin': 'DOGE',
+            bitcoin: 'BTC',
+            ethereum: 'ETH',
+            cardano: 'ADA',
+            polkadot: 'DOT',
+            solana: 'SOL',
+            binancecoin: 'BNB',
+            ripple: 'XRP',
+            dogecoin: 'DOGE',
             'matic-network': 'MATIC',
-            'litecoin': 'LTC'
+            litecoin: 'LTC'
         };
 
         Object.keys(data).forEach(id => {
             const symbol = mapping[id];
-            if (symbol) {
-                state.priceData[symbol] = {
-                    price: data[id].usd,
-                    high24h: data[id].usd_24h_high || data[id].usd * 1.05,
-                    low24h: data[id].usd_24h_low || data[id].usd * 0.95,
-                    volume24h: data[id].usd_24h_vol || 0,
-                    priceChange24h: data[id].usd * (data[id].usd_24h_change / 100),
-                    priceChangePercent24h: data[id].usd_24h_change || 0,
-                    lastUpdate: Date.now()
-                };
-            }
+            const raw = data[id];
+
+            if (!symbol || !raw || raw.usd === undefined) return;
+
+            const price = raw.usd;
+
+            const high24h =
+                raw.usd_24h_high !== undefined && raw.usd_24h_high !== null ?
+                raw.usd_24h_high :
+                price * 1.05;
+
+            const low24h =
+                raw.usd_24h_low !== undefined && raw.usd_24h_low !== null ?
+                raw.usd_24h_low :
+                price * 0.95;
+
+            const volume24h =
+                raw.usd_24h_vol !== undefined && raw.usd_24h_vol !== null ?
+                raw.usd_24h_vol :
+                0;
+
+            const changePercent =
+                raw.usd_24h_change !== undefined && raw.usd_24h_change !== null ?
+                raw.usd_24h_change :
+                0;
+
+            state.priceData[symbol] = {
+                price,
+                high24h,
+                low24h,
+                volume24h,
+                priceChange24h: price * (changePercent / 100),
+                priceChangePercent24h: changePercent,
+                lastUpdate: Date.now(),
+                source: 'coingecko-proxy'
+            };
         });
 
         updatePriceDisplay(null);
         updateTopMovers();
+
     } catch (error) {
-        console.error('Error fetching CoinGecko data:', error);
+        console.error('[REST FALLBACK] CoinGecko proxy failed:', error);
     }
 }
+
 
 /**
  * Update price display
@@ -3114,14 +3242,33 @@ function updateConnectionStatus(status) {
     if (state.isRestoreMode) {
         statusEl.className = `connection-status restored`;
         const txt = statusEl.querySelector('.status-text');
-        if (txt) txt.textContent = 'Java State Restore Engine';
+        if (txt) {
+            txt.textContent = state.restoredFromLink ?
+                'CRYPTO SESSION RENDERING ENGINE β' :
+                'JSON STATE RESTORE ENGINE';
+
+        }
         return;
     }
 
-    statusEl.className = `connection-status ${status}`;
+    let className = status;
+    if (status === 'connecting') {
+        className = 'disconnected';
+    }
+
+    statusEl.className = `connection-status ${className}`;
     const txt = statusEl.querySelector('.status-text');
-    if (txt) txt.textContent = status === 'connected' ? 'Connected' : 'Disconnected';
+    if (txt) {
+        if (status === 'connecting') {
+            txt.textContent = 'Connecting...';
+        } else {
+            txt.textContent = status === 'connected' ?
+                'Connected' :
+                'Disconnected';
+        }
+    }
 }
+
 
 /**
  * Update system health
@@ -3546,17 +3693,46 @@ function formatVolume(volume) {
 /**
  * Generate real AI summary (Hugging Face)
  */
-async function generateRealAISummary(snapshot) {
-    const s = snapshot.snapshot;
-    const sym = s.applicationState.currentSymbol;
-    const d = s.priceData[sym];
+/**
+ * Generate real AI summary (Hugging Face)
+ * - Accepts `snapshot` AND optional `symbol`. If symbol is provided, summary is generated for that symbol.
+ */
+async function generateRealAISummary(snapshot, symbol = null) {
+    const s = snapshot.snapshot || {};
+    // prefer explicit symbol param, else snapshot applicationState symbol, else global state
+    const sym = symbol || (s.applicationState && s.applicationState.currentSymbol) || state.currentSymbol;
+    const assetName = (s.applicationState && s.applicationState.currentName) || state.currentName || sym;
+    const d = (s.priceData && s.priceData[sym]) || (state.priceData && state.priceData[sym]) || {};
+
+    // gather fields safely with fallbacks
+    const price =
+        d.price !== undefined && d.price !== null ? d.price : '--';
+
+    const change24 =
+        d.priceChangePercent24h !== undefined && d.priceChangePercent24h !== null ?
+        d.priceChangePercent24h :
+        (d.change24h !== undefined && d.change24h !== null ? d.change24h : '--');
+
+    const vol24 =
+        d.volume24h !== undefined && d.volume24h !== null ?
+        d.volume24h :
+        (d.volume !== undefined && d.volume !== null ? d.volume : '--');
+
+
+    // optional: include a few derived metrics if present in snapshot.metadata
+    const sma7 = (s.metadata && s.metadata.derived && s.metadata.derived[sym] && s.metadata.derived[sym].sma7) || null;
+    const sma30 = (s.metadata && s.metadata.derived && s.metadata.derived[sym] && s.metadata.derived[sym].sma30) || null;
 
     const prompt = `
-Summarize this crypto market briefly:
-Asset: ${s.applicationState.currentName} (${sym})
-Price: ${d.price}
-24h Change: ${d.priceChangePercent24h}%
-24h Volume: ${d.volume24h}
+Summarize the current state of this crypto asset briefly and actionable:
+Asset: ${assetName} (${sym})
+Price: ${price}
+24h Change: ${change24}%
+24h Volume: ${vol24}
+${sma7 ? `7-day SMA: ${sma7}\n` : ''}
+${sma30 ? `30-day SMA: ${sma30}\n` : ''}
+Please include short market-observation, short risk note, and a one-sentence trade idea (if applicable).
+Limit to ~80-140 words.
 `;
 
     try {
@@ -3572,10 +3748,13 @@ Price: ${d.price}
 
         const result = await response.json();
 
-        if (result && result[0] && result[0].summary_text) {
-            return result[0].summary_text;
+        if (Array.isArray(result) && result[0] && (result[0].summary_text || result[0].generated_text)) {
+            // support different hf formats
+            return result[0].summary_text || result[0].generated_text;
+        } else if (result.summary_text) {
+            return result.summary_text;
         } else {
-            throw new Error("Invalid response format");
+            throw new Error("Invalid response format from AI proxy");
         }
 
     } catch (error) {
@@ -3599,12 +3778,16 @@ function closeAISummary() {
 /**
  * Update AI badges from snapshot
  */
-function updateAIBadges(snapshot) {
-    const s = snapshot.snapshot;
-    const sym = s.applicationState.currentSymbol;
-    const d = s.priceData[sym];
+/**
+ * Update AI badges from snapshot for given symbol
+ * If symbol omitted, uses snapshot.applicationState.currentSymbol or state.currentSymbol
+ */
+function updateAIBadges(snapshot, symbol = null) {
+    const s = snapshot.snapshot || {};
+    const sym = symbol || (s.applicationState && s.applicationState.currentSymbol) || state.currentSymbol;
+    const d = (s.priceData && s.priceData[sym]) || (state.priceData && state.priceData[sym]) || {};
 
-    const timestamp = new Date(s.metadata.snapshotTime);
+    const timestamp = new Date((s.metadata && s.metadata.snapshotTime) || Date.now());
     const timeEl = document.getElementById('aiSummaryTimestamp');
     if (timeEl) {
         timeEl.textContent = timestamp.toLocaleString();
@@ -3612,26 +3795,28 @@ function updateAIBadges(snapshot) {
 
     const assetBadge = document.getElementById('aiBadgeAsset');
     if (assetBadge) {
+        const name = (s.applicationState && s.applicationState.currentName) || state.currentName || sym;
         assetBadge.innerHTML = `
             <span style="font-weight:bold;color:var(--color-primary);">${sym}</span>
-            <span>${s.applicationState.currentName}</span>
+            <span>${name}</span>
         `;
     }
 
     const changeBadge = document.getElementById('aiBadgeChange');
-    if (changeBadge && d) {
-        const change = d.priceChangePercent24h;
-        const color = change >= 0 ? 'var(--color-success)' : 'var(--color-error)';
+    if (changeBadge) {
+        const change = d.priceChangePercent24h ?? (d.change24h ?? 0);
+        const color = Number(change) >= 0 ? 'var(--color-success)' : 'var(--color-error)';
+        const changeFormatted = Number.isFinite(Number(change)) ? `${Number(change).toFixed(2)}%` : '--';
         changeBadge.innerHTML = `
             <span style="color:${color};font-weight:bold;">
-                ${change >= 0 ? '↗' : '↘'} ${Math.abs(change).toFixed(2)}%
+                ${Number(change) >= 0 ? '↗' : '↘'} ${changeFormatted}
             </span>
         `;
     }
 
     const qualityBadge = document.getElementById('aiBadgeQuality');
     if (qualityBadge) {
-        const quality = s.metadata.snapshotQuality;
+        const quality = (s.metadata && s.metadata.snapshotQuality) || 'RECENT';
         const qualityColors = {
             'FRESH': 'var(--color-success)',
             'RECENT': 'var(--color-warning)',
@@ -3646,11 +3831,9 @@ function updateAIBadges(snapshot) {
 
     const sourceBadge = document.getElementById('aiBadgeSource');
     if (sourceBadge) {
-        const wsStatus = s.metadata.websocketStatus;
+        const wsStatus = (s.metadata && s.metadata.websocketStatus) || (state.ws && state.ws.readyState === WebSocket.OPEN ? 'connected' : 'rest');
         const source = wsStatus === 'connected' ? 'WebSocket' : 'REST';
-        sourceBadge.innerHTML = `
-            <span>${source}</span>
-        `;
+        sourceBadge.innerHTML = `<span>${source}</span>`;
     }
 }
 
@@ -3857,7 +4040,10 @@ function setupAIPanelDrag() {
 /**
  * AI summary button handler
  */
-document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
+/**
+ * AI summary button handler — updated to honor selected coin during JSRE / CSRE
+ */
+document.getElementById("aiSummaryBtn").addEventListener("click", async () => {
     const panel = document.getElementById("aiSummaryPanel");
     const textBox = document.getElementById("aiSummaryText");
     const timestampEl = document.getElementById("aiSummaryTimestamp");
@@ -3869,28 +4055,32 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
 
     panel.style.display = "block";
     textBox.textContent = "Analyzing market data and generating insights...";
-    if (timestampEl) {
-        timestampEl.textContent = "Generating...";
-    }
+    if (timestampEl) timestampEl.textContent = "Generating...";
 
     try {
         let snapshot;
         if (state.isRestoreMode && state.restoreSnapshot) {
+            // use the restore snapshot but generate for the currently selected symbol
             snapshot = state.restoreSnapshot;
             aiSummarySession.isJSREMode = true;
-            console.log("[AI] Using JSRE restored snapshot");
+            console.log("[AI] Using restored snapshot (JSRE/CSRE)");
         } else {
             snapshot = generateSnapshot();
             aiSummarySession.isJSREMode = false;
             console.log("[AI] Using live snapshot");
         }
 
+        // determine symbol to summarize: prefer the actual runtime selection
+        const symbolToSummarize = state.currentSymbol || (snapshot.snapshot && snapshot.snapshot.applicationState && snapshot.snapshot.applicationState.currentSymbol);
+
         aiSummarySession.originalSnapshot = JSON.parse(JSON.stringify(snapshot));
         aiSummarySession.generatedAt = new Date();
 
-        updateAIBadges(snapshot);
+        // Update badges for the selected coin
+        updateAIBadges(snapshot, symbolToSummarize);
 
-        const summary = await generateRealAISummary(snapshot);
+        // Pass symbol into generator so AI summary is for selected coin
+        const summary = await generateRealAISummary(snapshot, symbolToSummarize);
 
         const formattedSummary = summary
             .replace(/\n\s*\n/g, '\n\n')
@@ -3905,17 +4095,15 @@ document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
             timestampEl.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
-        console.log("[AI] Summary generated successfully");
+        console.log("[AI] Summary generated successfully for", symbolToSummarize);
 
     } catch (err) {
         console.error("AI summary error:", err);
         textBox.textContent = "⚠️ AI service is currently unavailable. Please try again later.\n\nYou can still view the snapshot data in the badges above.";
-
         try {
-            const snapshot = state.isRestoreMode && state.restoreSnapshot ?
-                state.restoreSnapshot :
-                generateSnapshot();
-            updateAIBadges(snapshot);
+            const snapshot = state.isRestoreMode && state.restoreSnapshot ? state.restoreSnapshot : generateSnapshot();
+            const symbolToSummarize = state.currentSymbol || (snapshot.snapshot && snapshot.snapshot.applicationState && snapshot.snapshot.applicationState.currentSymbol);
+            updateAIBadges(snapshot, symbolToSummarize);
             aiSummarySession.originalSnapshot = snapshot;
         } catch (e) {
             console.error("Fallback data failed:", e);
