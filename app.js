@@ -426,6 +426,21 @@ async function generateShareableEnvironmentLink() {
         addAlert('Failed to generate share link. Please try again.', 'error');
     }
 }
+async function shortenUrl(longUrl) {
+    const response = await fetch(
+        "https://crypto-shortener.ajithramesh2020.workers.dev/shorten", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: longUrl })
+        }
+    );
+
+    const data = await response.json();
+    if (!data.short) throw new Error("Shorten failed");
+
+    return data.short;
+}
+
 
 /**
  * Open share modal with link and snapshot data
@@ -515,6 +530,8 @@ function openShareModal(link, snapshot, options = {}) {
             modalTitle.textContent = 'Crypto Session Rendering Engine β';
         }
     }
+
+
 
     console.log('[SHARE] Modal opened successfully');
 }
@@ -713,9 +730,14 @@ function setupShareEnvFab() {
     if (!shareEnvFab) return;
 
     shareEnvFab.addEventListener('click', async() => {
+        // 1. IMMEDIATELY generate data
+        const snapshot = generateSnapshot();
+        const cleanedSnapshot = shareStripSensitive(snapshot);
+        const encoded = shareEncodeSnapshot(cleanedSnapshot);
+        const shareUrl = `${window.location.origin}${window.location.pathname}#env=${encoded}`;
+
+        // 2. Start loader animation
         await showStagedLoader({
-            // 6. ENTIRE CRYPTO ENVIRONMENT SHARING (7 STEPS)
-            // 6. ENTIRE CRYPTO ENVIRONMENT SHARING (7)
             stages: [
                 'CAPTURING FULL APPLICATION SNAPSHOT',
                 'EXECUTING DATA SANITIZATION LAYER',
@@ -724,12 +746,20 @@ function setupShareEnvFab() {
                 'MATERIALIZING SHAREABLE URL',
                 'COMMITTING SHARE ENVIRONMENT UI'
             ],
-
             totalMs: 15000,
             title: 'Preparing share environment',
             tagline: 'Generating shareable link'
         });
-        generateShareableEnvironmentLink();
+
+        // 3. After loader, try to shorten URL and show modal
+        try {
+            const tinyUrl = await createTinyUrl(shareUrl);
+            const qrImageUrl = createQrImageUrl(tinyUrl);
+            openShareModal(tinyUrl, cleanedSnapshot);
+        } catch (error) {
+            console.error('[SHARE] TinyURL failed:', error);
+            openShareModal(shareUrl, cleanedSnapshot);
+        }
     });
 }
 
@@ -971,7 +1001,7 @@ function handleExportReadyAction(action) {
             break;
 
         case 'download':
-            closeExportReadyPopup();
+            // ACTUALLY PERFORM THE DOWNLOAD
             if (currentExportType === 'pdf') {
                 exportToPDF(currentExportSnapshot);
             } else if (currentExportType === 'json') {
@@ -980,6 +1010,7 @@ function handleExportReadyAction(action) {
                 exportToPDF(currentExportSnapshot);
                 setTimeout(() => exportToJSON(currentExportSnapshot), 500);
             }
+            closeExportReadyPopup();
             break;
     }
 }
@@ -1031,11 +1062,16 @@ function setupExportDropdown() {
             e.stopPropagation();
             const action = option.dataset.option;
 
+            // Hide dropdown immediately
+            exportDropdown.classList.remove('active');
+
+            // 1. IMMEDIATELY generate snapshot data
+            const snapshot = generateSnapshot();
+
             switch (action) {
                 case 'pdf':
-                    exportDropdown.classList.remove('active');
+                    // 2. Show loader animation
                     await showStagedLoader({
-                        // 1. PDF EXPORT (5)
                         stages: [
                             'INITIALIZING PDF RENDER',
                             'BUILDING DOCUMENT LAYOUT',
@@ -1047,14 +1083,14 @@ function setupExportDropdown() {
                         title: 'Preparing PDF export',
                         tagline: ''
                     });
-                    showReadyExportPopup('pdf', generateSnapshot());
+
+                    // 3. After loader, show ready popup
+                    showReadyExportPopup('pdf', snapshot);
                     break;
 
                 case 'json':
-                    exportDropdown.classList.remove('active');
+                    // 2. Show loader animation
                     await showStagedLoader({
-                        // 2. JSON EXPORT (5 STEPS)
-                        // 2. JSON EXPORT (5)
                         stages: [
                             'SNAPSHOTTING APP',
                             'CONSTRUCTING JSON DATA GRAPH',
@@ -1062,19 +1098,18 @@ function setupExportDropdown() {
                             'ENCODING AND COMPRESSING PAYLOAD',
                             'COMMITTING JSON EXPORT ARTIFACT'
                         ],
-
                         totalMs: 8000,
                         title: 'Preparing JSON export',
                         tagline: 'Generating JSON snapshot'
                     });
-                    showReadyExportPopup('json', generateSnapshot());
+
+                    // 3. After loader, show ready popup
+                    showReadyExportPopup('json', snapshot);
                     break;
 
                 case 'both':
-                    exportDropdown.classList.remove('active');
+                    // 2. Show loader animation
                     await showStagedLoader({
-                        // 3. PDF AND JSON EXPORT (5 STEPS)
-                        // 3. PDF + JSON EXPORT (5)
                         stages: [
                             'INITIALIZING UNIFIED RENDER',
                             'EXECUTING PDF RENDER PIPELINE',
@@ -1086,11 +1121,13 @@ function setupExportDropdown() {
                         title: 'Preparing export bundle',
                         tagline: 'Generating PDF and JSON'
                     });
-                    showReadyExportPopup('both', generateSnapshot());
+
+                    // 3. After loader, show ready popup
+                    showReadyExportPopup('both', snapshot);
                     break;
 
                 case 'cancel':
-                    exportDropdown.classList.remove('active');
+                    // Just close dropdown, no action
                     break;
             }
         });
