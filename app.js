@@ -701,7 +701,7 @@ function shareViaNative() {
     if (navigator.share) {
         navigator.share({
                 title: `Crypto View - ${assetName} Environment`,
-                text: `Check out this ${assetName} market environment snapshot`,
+                text: `Check out this ${assetName} market environment`,
                 url: link
             })
             .then(() => {
@@ -3734,50 +3734,29 @@ function formatVolume(volume) {
  * Generate real AI summary (Hugging Face)
  * - Accepts `snapshot` AND optional `symbol`. If symbol is provided, summary is generated for that symbol.
  */
-async function generateRealAISummary(snapshot, symbol = null) {
-    const s = snapshot.snapshot || {};
-    // prefer explicit symbol param, else snapshot applicationState symbol, else global state
-    const sym = symbol || (s.applicationState && s.applicationState.currentSymbol) || state.currentSymbol;
-    const assetName = (s.applicationState && s.applicationState.currentName) || state.currentName || sym;
-    const d = (s.priceData && s.priceData[sym]) || (state.priceData && state.priceData[sym]) || {};
+async function generateRealAISummary(snapshot) {
+    const s = snapshot.snapshot;
+    const sym = s.applicationState.currentSymbol;
+    const d = s.priceData[sym];
 
-    // gather fields safely with fallbacks
-    const price =
-        d.price !== undefined && d.price !== null ? d.price : '--';
-
-    const change24 =
-        d.priceChangePercent24h !== undefined && d.priceChangePercent24h !== null ?
-        d.priceChangePercent24h :
-        (d.change24h !== undefined && d.change24h !== null ? d.change24h : '--');
-
-    const vol24 =
-        d.volume24h !== undefined && d.volume24h !== null ?
-        d.volume24h :
-        (d.volume !== undefined && d.volume !== null ? d.volume : '--');
-
-
-    // optional: include a few derived metrics if present in snapshot.metadata
-    const sma7 = (s.metadata && s.metadata.derived && s.metadata.derived[sym] && s.metadata.derived[sym].sma7) || null;
-    const sma30 = (s.metadata && s.metadata.derived && s.metadata.derived[sym] && s.metadata.derived[sym].sma30) || null;
-
+    // Enhanced prompt with more context
     const prompt = `
-Summarize the current state of this crypto asset briefly and actionable:
-Asset: ${assetName} (${sym})
-Price: ${price}
-24h Change: ${change24}%
-24h Volume: ${vol24}
-${sma7 ? `7-day SMA: ${sma7}\n` : ''}
-${sma30 ? `30-day SMA: ${sma30}\n` : ''}
-Please include short market-observation, short risk note, and a one-sentence trade idea (if applicable).
-Limit to ~80-140 words.
+Summarize this crypto market briefly:
+Asset: ${s.applicationState.currentName} (${sym})
+Price: ${d.price}
+24h Change: ${d.priceChangePercent24h}%
+24h Volume: ${d.volume24h}
 `;
 
+
     try {
-        const response = await fetch("https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-        });
+        const response = await fetch(
+            "https://crypto-ai-proxy.ajithramesh2020.workers.dev", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt })
+            }
+        );
 
         if (!response.ok) {
             throw new Error(`API responded with ${response.status}`);
@@ -3785,13 +3764,11 @@ Limit to ~80-140 words.
 
         const result = await response.json();
 
-        if (Array.isArray(result) && result[0] && (result[0].summary_text || result[0].generated_text)) {
-            // support different hf formats
-            return result[0].summary_text || result[0].generated_text;
-        } else if (result.summary_text) {
-            return result.summary_text;
+        // Ensure we get the summary text
+        if (result && result[0] && result[0].summary_text) {
+            return result[0].summary_text;
         } else {
-            throw new Error("Invalid response format from AI proxy");
+            throw new Error("Invalid response format");
         }
 
     } catch (error) {
@@ -3799,7 +3776,6 @@ Limit to ~80-140 words.
         throw error;
     }
 }
-
 /**
  * Close AI summary modal
  */
@@ -3841,14 +3817,24 @@ function updateAIBadges(snapshot, symbol = null) {
 
     const changeBadge = document.getElementById('aiBadgeChange');
     if (changeBadge) {
-        const change = d.priceChangePercent24h ?? (d.change24h ?? 0);
-        const color = Number(change) >= 0 ? 'var(--color-success)' : 'var(--color-error)';
-        const changeFormatted = Number.isFinite(Number(change)) ? `${Number(change).toFixed(2)}%` : '--';
+        const change =
+            d.priceChangePercent24h !== undefined && d.priceChangePercent24h !== null ?
+            d.priceChangePercent24h :
+            (d.change24h !== undefined && d.change24h !== null ? d.change24h : 0);
+
+        const color = Number(change) >= 0 ?
+            'var(--color-success)' :
+            'var(--color-error)';
+
+        const changeFormatted = Number.isFinite(Number(change)) ?
+            `${Number(change).toFixed(2)}%` :
+            '--';
+
         changeBadge.innerHTML = `
-            <span style="color:${color};font-weight:bold;">
-                ${Number(change) >= 0 ? '↗' : '↘'} ${changeFormatted}
-            </span>
-        `;
+        <span style="color:${color};font-weight:bold;">
+            ${Number(change) >= 0 ? '↗' : '↘'} ${changeFormatted}
+        </span>
+    `;
     }
 
     const qualityBadge = document.getElementById('aiBadgeQuality');
@@ -4080,7 +4066,7 @@ function setupAIPanelDrag() {
 /**
  * AI summary button handler — updated to honor selected coin during JSRE / CSRE
  */
-document.getElementById("aiSummaryBtn").addEventListener("click", async () => {
+document.getElementById("aiSummaryBtn").addEventListener("click", async() => {
     const panel = document.getElementById("aiSummaryPanel");
     const textBox = document.getElementById("aiSummaryText");
     const timestampEl = document.getElementById("aiSummaryTimestamp");
