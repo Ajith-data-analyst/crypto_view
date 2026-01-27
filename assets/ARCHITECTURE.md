@@ -16,6 +16,42 @@ Detailed architectural documentation for RT-CPIP (Real-Time Cryptocurrency Insig
 
 ---
 
+## System Architecture
+
+```text
+┌──────────────────────────────────────────┐
+│                CLIENT BROWSER            │
+│        ( HTML • CSS • JavaScript)        │
+│  ┌─────────────────────────────────────┐ │
+│  │  UI & Dashboard                     │ │
+│  │  Application Logic                  │ │                   ┌───────────────────────────────────────┐
+│  │  State Management                   │ │                   │         EXTERNAL SERVICES             │
+│  │  Snapshot / Restore Engine (JSRE)   │ │<───────┐          │                                       │
+│  │  AI Prompt Builder                  │ │        |          │  • CoinGecko API (Market Data)        │
+│  │  Share via URL & QR                 │ │        |          │  • Hugging Face (AI Inference)        │
+│  └─────────────────────────────────────┘ │        |          └─────────────────▲─────────────────────┘
+└───────────────▲──────────────────────────┘        |                            |
+                │                                   │                            |
+   Real-Time    │                                   │         AI Summary         |        Read-Only - REST / AI
+   WebSocket    │                                   │         Request            |
+                │                                   │                            |
+┌───────────────┴───────────────┐   ┌───────────────┴────────────────────────────┴────────┐
+│        BINANCE API            │   │                     EDGE LAYER                      |
+│   (Read-Only WebSocket)       │   │               (Cloudflare Workers)                  |
+│                               │   │                                                     |
+│  • Live Market Tickers        │   │  ┌────────────────────┐    ┌────────────────────┐   │ 
+│  • Low-Latency Streaming      │   │  │ CoinGecko Proxy    │    │ AI Proxy           │   │ 
+└───────────────────────────────┘   │  │ • Caching          │    │ • API Key Hidden   │   │ 
+                                    │  │ • Rate-limit       │    │ • Validation       │   │ 
+                                    │  │ • CORS             │    │                    │   │ 
+                                    │  └────────────────────┘    └────────────────────┘   │
+                                    │                 Stateless • No DB                   |
+                                    └─────────────────────────────────────────────────────┘
+                                   
+```
+
+---
+
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
@@ -26,61 +62,6 @@ Detailed architectural documentation for RT-CPIP (Real-Time Cryptocurrency Insig
 6. [Snapshot Serialization](#snapshot-serialization)
 7. [Share Environment System](#share-environment-system)
 8. [Deployment Architecture](#deployment-architecture)
-
----
-
-## System Architecture
-
-```text
-┌───────────────────────────────────────────────────────────┐
-│                    CLIENT BROWSER                          │
-│              (HTML • CSS • JavaScript)                     │
-│                                                           │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │  UI & Dashboard                                      │ │
-│  │  Application Logic                                   │ │
-│  │  State Management                                    │ │
-│  │  Snapshot / Restore Engine (JSRE)                    │ │
-│  │  AI Prompt Builder                                   │ │
-│  │  Share via URL & QR                                  │ │
-│  └─────────────────────────────────────────────────────┘ │
-│                                                           │
-└───────────────▲───────────────────────────▲───────────────┘
-                │                           │
-   Real-Time    │                           │   AI Summary
-   WebSocket    │                           │   Request
-                │                           │
-┌───────────────┴──────────────┐   ┌────────┴───────────────┐
-│        BINANCE API            │   │   EDGE LAYER            │
-│   (Read-Only WebSocket)       │   │ (Cloudflare Workers)    │
-│                               │   │                         │
-│  • Live Market Tickers        │   │  ┌──────────────────┐ │
-│  • Low-Latency Streaming      │   │  │ CoinGecko Proxy   │ │
-└───────────────────────────────┘   │  │ • Caching         │ │
-                                    │  │ • Rate-limit     │ │
-                                    │  │ • CORS           │ │
-                                    │  └──────────────────┘ │
-                                    │                         │
-                                    │  ┌──────────────────┐ │
-                                    │  │ AI Proxy          │ │
-                                    │  │ • API Key Hidden  │ │
-                                    │  │ • Validation     │ │
-                                    │  └──────────────────┘ │
-                                    │                         │
-                                    │  Stateless • No DB     │
-                                    └──────────▲────────────┘
-                                               │
-                                   Read-Only   │
-                                   REST / AI   │
-                                               │
-                     ┌─────────────────────────┴────────────┐
-                     │         EXTERNAL SERVICES             │
-                     │                                       │
-                     │  • CoinGecko API (Market Data)        │
-                     │  • Hugging Face (AI Inference)        │
-                     │                                       │
-                     └───────────────────────────────────────┘
-```
 
 ---
 
