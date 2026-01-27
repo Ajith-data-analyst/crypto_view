@@ -1,4 +1,4 @@
-# CRYPTO VIEW - REAL TIME INR CRYPTO ANALYTICS PLATFORM - API Reference
+# CRYPTO VIEW  - API REFERENCE
 
 Complete API documentation for RT-CPIP (Real-Time Cryptocurrency Insights Platform).
 
