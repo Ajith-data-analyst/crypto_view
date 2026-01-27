@@ -1,21 +1,98 @@
-MIT License
+## MIT License
 
-Copyright (c) 2025 Ajith R
+**Copyright (c) 202 Ajith R**
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
+of this software and associated documentation files (the “Software”), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+2. Any modified versions of the Software must clearly indicate that changes
+   have been made and must not misrepresent the original work.
+
+---
+
+### Disclaimer of Warranty
+
+THE SOFTWARE IS PROVIDED **“AS IS”**, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+THE AUTHORS OR COPYRIGHT HOLDERS SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+---
+
+### Third-Party Services Notice
+
+This software may interact with third-party APIs and services, including but
+not limited to cryptocurrency data providers and AI inference platforms.
+The authors are not responsible for the availability, accuracy, or behavior
+of any third-party services used by this Software.
+
+---
+
+### Usage Responsibility
+
+Any financial, analytical, or informational output produced by this Software
+is provided for **educational and informational purposes only** and should
+not be considered financial or investment advice. Users are solely
+responsible for how they use the Software and its outputs.
+
+---
+
+<p align="center">
+ <!-- Contact & Immediate Reach -->
+<a href="mailto:ajithramesh2020@gmail.com">
+  <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white"/>
+</a>
+
+<a href="tel:+919345264522">
+  <img src="https://img.shields.io/badge/Call%20Me-0A66C2?style=for-the-badge&logo=phone&logoColor=white"/>
+</a>
+
+<a href="https://wa.me/9345264522">
+  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white"/>
+</a>
+
+<!-- Professional Identity -->
+<a href="https://www.linkedin.com/in/ajith-ramesh-data-analyst/">
+  <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"/>
+</a>
+
+<a href="https://ajith-data-analyst.github.io/Portfolio/Ajith_R_Resume.pdf">
+  <img src="https://img.shields.io/badge/Resume-4CAF50?style=for-the-badge&logo=googledrive&logoColor=white"/>
+</a>
+
+<!-- Work Proof -->
+<a href="https://ajith-data-analyst.github.io/Portfolio/home.html">
+  <img src="https://img.shields.io/badge/Portfolio-FF6B6B?style=for-the-badge&logo=web&logoColor=white"/>
+</a>
+
+<a href="https://github.com/Ajith-data-analyst">
+  <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+</p>
+<div align="center">
+
+  
+*Built with precision, powered by data, designed for clarity.*  
+<a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt">
+  *© 2025 Crypto View Project. All rights reserved under MIT License.*
+</a>
+
+</div>
+
+
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=footer"/>
+</p>
+
