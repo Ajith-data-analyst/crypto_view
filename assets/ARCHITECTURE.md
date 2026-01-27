@@ -29,6 +29,61 @@ Detailed architectural documentation for RT-CPIP (Real-Time Cryptocurrency Insig
 
 ---
 
+## System Architecture
+
+```text
+┌───────────────────────────────────────────────────────────┐
+│                    CLIENT BROWSER                          │
+│              (HTML • CSS • JavaScript)                     │
+│                                                           │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │  UI & Dashboard                                      │ │
+│  │  Application Logic                                   │ │
+│  │  State Management                                    │ │
+│  │  Snapshot / Restore Engine (JSRE)                    │ │
+│  │  AI Prompt Builder                                   │ │
+│  │  Share via URL & QR                                  │ │
+│  └─────────────────────────────────────────────────────┘ │
+│                                                           │
+└───────────────▲───────────────────────────▲───────────────┘
+                │                           │
+   Real-Time    │                           │   AI Summary
+   WebSocket    │                           │   Request
+                │                           │
+┌───────────────┴──────────────┐   ┌────────┴───────────────┐
+│        BINANCE API            │   │   EDGE LAYER            │
+│   (Read-Only WebSocket)       │   │ (Cloudflare Workers)    │
+│                               │   │                         │
+│  • Live Market Tickers        │   │  ┌──────────────────┐ │
+│  • Low-Latency Streaming      │   │  │ CoinGecko Proxy   │ │
+└───────────────────────────────┘   │  │ • Caching         │ │
+                                    │  │ • Rate-limit     │ │
+                                    │  │ • CORS           │ │
+                                    │  └──────────────────┘ │
+                                    │                         │
+                                    │  ┌──────────────────┐ │
+                                    │  │ AI Proxy          │ │
+                                    │  │ • API Key Hidden  │ │
+                                    │  │ • Validation     │ │
+                                    │  └──────────────────┘ │
+                                    │                         │
+                                    │  Stateless • No DB     │
+                                    └──────────▲────────────┘
+                                               │
+                                   Read-Only   │
+                                   REST / AI   │
+                                               │
+                     ┌─────────────────────────┴────────────┐
+                     │         EXTERNAL SERVICES             │
+                     │                                       │
+                     │  • CoinGecko API (Market Data)        │
+                     │  • Hugging Face (AI Inference)        │
+                     │                                       │
+                     └───────────────────────────────────────┘
+```
+
+---
+
 ## Architecture Overview
 
 RT-CPIP follows a **tri-layer serverless architecture**:
