@@ -1,6 +1,172 @@
-# RT-CPIP: Real-Time Cryptocurrency Insights Platform
+# CRYPTO VIEW - REAL TIME INR CRYPTO ANALYTICS PLATFORM
 
-A production-grade cryptocurrency analytics dashboard that provides real-time market data, advanced microstructure analysis, and shareable market snapshots with AI-powered summarization.
+
+[![GitHub Repository](https://img.shields.io/badge/📂_GITHUB_REPOSITORY-Crypto_View-black?style=for-the-badge&logo=github)](https://github.com/Ajith-data-analyst/crypto_view)
+[![MIT License](https://img.shields.io/badge/📜_License-MIT-green?style=for-the-badge)](https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt)
+[![Built with Web Technologies](https://img.shields.io/badge/🔧_Built_with-HTML/CSS/JS-orange?style=for-the-badge)](https://developer.mozilla.org)
+
+## 🎯 Executive Summary
+
+**Crypto View** is a production-grade cryptocurrency analytics dashboard that delivers institutional-level market intelligence through an intuitive, real-time interface. Built entirely with vanilla web technologies, it combines live market data, advanced microstructure analysis, AI-powered insights, and state restoration capabilities into a single cohesive platform.
+
+<p align="center">
+  <a href="https://ajith-data-analyst.github.io/crypto_view/">
+    <img src="https://img.shields.io/badge/VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github"/>
+  </a>
+</p>
+
+
+### CRYPTO VIEW - ARCHITECTURE MAP
+
+```mermaid
+graph TB
+    %% ========== DATA LAYER ==========
+    subgraph "DATA SOURCES"
+        WS[Binance WebSocket<br/>stream.binance.com]
+        API[CoinGecko REST API<br/>api.coingecko.com]
+        XR[Exchange Rate API<br/>USD→INR]
+        HF[Hugging Face AI<br/>Cloudflare Proxy]
+    end
+    
+    %% ========== CORE ENGINE ==========
+    subgraph "CORE ENGINE"
+        STATE["Global State Object<br/>• currentSymbol<br/>• priceData<br/>• isRestoreMode<br/>• restoreSnapshot"]
+        JSRE[JSON State Restore Engine]
+        AI["AI Summary System<br/>• Session Management<br/>• Drag & Drop"]
+        WSM[WebSocket Manager]
+        TIMER[Timer Manager]
+    end
+    
+    %% ========== PROCESSING LAYER ==========
+    subgraph "PROCESSING PIPELINES"
+        UPDATE["Real-time Processor<br/>handleTickerUpdate()"]
+        ANALYTICS["Analytics Engine<br/>• Microstructure<br/>• Volatility<br/>• Risk Indicators"]
+        SNAPSHOT["Snapshot Generator<br/>generateSnapshot()"]
+        VALIDATE["Snapshot Validator<br/>validateSnapshot()"]
+    end
+    
+    %% ========== UI COMPONENTS ==========
+    subgraph "UI LAYER"
+        HEADER["Header & Time Display"]
+        SELECTOR["Crypto Selector<br/>9 Cryptocurrencies"]
+        PRICE["Price Card<br/>• Current Price<br/>• 24h Stats"]
+        MICRO["Market Microstructure<br/>• Order Flow Imbalance<br/>• Volume Slope"]
+        VOLATILITY["Volatility Metrics<br/>• 1h/4h/24h"]
+        ANOMALY["Anomaly Detection"]
+        TOPMOVERS["Top Movers"]
+        RISK["Risk Indicators"]
+        ALERTS["Alert Center"]
+        FAB["Floating Action Stack<br/>7 Functions"]
+        SEARCH["Universal Search<br/>Coins/Metrics/Alerts"]
+        FOOTER["Footer<br/>Connection Status"]
+        AI_PANEL["AI Summary Panel<br/>Draggable Window"]
+        JSRE_UI[JSRE Overlay & Modal]
+    end
+    
+    %% ========== USER ACTIONS ==========
+    subgraph "USER INTERACTIONS"
+        CLICK["Click/Tap Events"]
+        IMPORT["File Import<br/>JSON Snapshot"]
+        EXPORT["Export<br/>PDF/JSON/Both"]
+        SEARCH_IN["Search Input"]
+        DRAG["Drag AI Panel"]
+        TOGGLE["Toggle<br/>• Theme<br/>• Currency"]
+    end
+    
+    %% ========== DATA FLOWS ==========
+    %% Data Sources → Processing
+    WS -->|Real-time Stream| UPDATE
+    API -->|Fallback Data| UPDATE
+    XR -->|Currency Conversion| STATE
+    
+    %% Processing → State/UI
+    UPDATE --> STATE
+    UPDATE --> ANALYTICS
+    ANALYTICS --> MICRO
+    ANALYTICS --> VOLATILITY
+    ANALYTICS --> RISK
+    ANALYTICS --> ANOMALY
+    
+    %% State → UI Updates
+    STATE --> PRICE
+    STATE --> HEADER
+    STATE --> TOPMOVERS
+    STATE --> ALERTS
+    
+    %% Timer System
+    TIMER -->|Every Second| HEADER
+    TIMER -->|Every 30s| API
+    TIMER -->|Every 5s| XR
+    TIMER -->|Every 1s| FOOTER
+    
+    %% JSRE Workflow
+    IMPORT --> JSRE_UI
+    JSRE_UI -->|Validate| VALIDATE
+    VALIDATE -->|Success| JSRE
+    JSRE -->|Apply Snapshot| STATE
+    JSRE -->|Enter Restore Mode| TIMER[Stop Timers]
+    JSRE -->|Update UI| HEADER
+    
+    %% Snapshot Generation
+    CLICK -->|Export Button| SNAPSHOT
+    SNAPSHOT -->|Generate| EXPORT
+    
+    %% AI System
+    CLICK -->|AI Summary| AI
+    AI -->|Generate Summary| HF
+    HF -->|AI Response| AI_PANEL
+    AI -->|Drag Events| DRAG
+    
+    %% Search System
+    SEARCH_IN --> SEARCH
+    SEARCH -->|Coin Select| SELECTOR
+    SEARCH -->|Metric Focus| MICRO/VOLATILITY/RISK
+    
+    %% Theme/Currency
+    TOGGLE --> STATE
+    STATE -->|Theme Update| ALL_UI[All UI Components]
+    
+    %% ========== MODE SWITCHING ==========
+    subgraph "OPERATIONAL MODES"
+        LIVE["LIVE MODE<br/>• WebSocket Active<br/>• Real-time Updates<br/>• Live Data Processing"]
+        RESTORE["RESTORE MODE<br/>• WebSocket Disabled<br/>• Snapshot Data Only<br/>• Static Timestamp"]
+    end
+    
+    STATE -->|isRestoreMode: false| LIVE
+    STATE -->|isRestoreMode: true| RESTORE
+    
+    %% ========== KEY WORKFLOWS ==========
+    subgraph "MAIN WORKFLOWS"
+        WF1["1. INITIALIZATION<br/>• Setup Event Listeners<br/>• Connect WebSocket<br/>• Start Timers<br/>• Fetch Initial Data"]
+        WF2["2. REAL-TIME UPDATE<br/>WebSocket → State → UI"]
+        WF3["3. CRYPTO SWITCH<br/>Button Click → State Update → UI Refresh"]
+        WF4["4. SNAPSHOT EXPORT<br/>Click Export → Generate → Download"]
+        WF5["5. SNAPSHOT RESTORE<br/>File Import → Validate → Apply → Restore Mode"]
+        WF6["6. AI SUMMARY<br/>Click AI → Snapshot → API → Display"]
+        WF7["7. SEARCH<br/>Type → Filter → Select → Navigate"]
+    end
+    
+    %% Workflow Triggers
+    init[DOMContentLoaded] --> WF1
+    WS -->|onmessage| WF2
+    SELECTOR -->|onclick| WF3
+    FAB -->|exportBtn| WF4
+    FAB -->|importBtn| WF5
+    FAB -->|aiSummaryBtn| WF6
+    FAB -->|searchBtn| WF7
+    
+    %% ========== ERROR HANDLING ==========
+    subgraph "ERROR RECOVERY"
+        ERR_WS["WebSocket Error → Fallback to REST API"]
+        ERR_API["API Error → Use Cached Data"]
+        ERR_JSRE["Invalid Snapshot → Show Error Modal"]
+        ERR_AI["AI Service Error → Show Fallback Data"]
+    end
+    
+    WS -.->|onerror| ERR_WS
+    API -.->|catch| ERR_API
+    VALIDATE -.->|fail| ERR_JSRE
+    HF -.->|error| ERR_AI
 
 ---
 
@@ -2157,3 +2323,55 @@ High-value contributions:
 **Repository:** https://github.com/yourusername/rt-cpip  
 **Issues:** https://github.com/yourusername/rt-cpip/issues  
 **Discussions:** https://github.com/yourusername/rt-cpip/discussions
+
+---
+
+<p align="center">
+ <!-- Contact & Immediate Reach -->
+<a href="mailto:ajithramesh2020@gmail.com">
+  <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white"/>
+</a>
+
+<a href="tel:+919345264522">
+  <img src="https://img.shields.io/badge/Call%20Me-0A66C2?style=for-the-badge&logo=phone&logoColor=white"/>
+</a>
+
+<a href="https://wa.me/9345264522">
+  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white"/>
+</a>
+
+<!-- Professional Identity -->
+<a href="https://www.linkedin.com/in/ajith-ramesh-data-analyst/">
+  <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"/>
+</a>
+
+<a href="https://ajith-data-analyst.github.io/Portfolio/Ajith_R_Resume.pdf">
+  <img src="https://img.shields.io/badge/Resume-4CAF50?style=for-the-badge&logo=googledrive&logoColor=white"/>
+</a>
+
+<!-- Work Proof -->
+<a href="https://ajith-data-analyst.github.io/Portfolio/home.html">
+  <img src="https://img.shields.io/badge/Portfolio-FF6B6B?style=for-the-badge&logo=web&logoColor=white"/>
+</a>
+
+<a href="https://github.com/Ajith-data-analyst">
+  <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+</p>
+<div align="center">
+
+  
+*Built with precision, powered by data, designed for clarity.*  
+<a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt">
+  *© 2025 Crypto View Project. All rights reserved under MIT License.*
+</a>
+
+</div>
+
+
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=footer"/>
+</p>
+
+
