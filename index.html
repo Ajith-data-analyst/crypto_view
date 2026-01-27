@@ -513,10 +513,14 @@
                         <div class="share-link-input-wrapper">
                             <input type="text" id="shareLinkInput" class="share-link-input" readonly>
                             <button class="share-copy-btn">Copy Link</button>
+                            <button class="share-copy-btn" onclick="generateQrCodeForCurrentLink()">Get QR Code</button>
                         </div>
                     </div>
 
-                    <!-- Stats Section - Now 2 rows x 3 columns -->
+                    <!-- QR Code Section (initially hidden) -->
+
+
+                    <!-- Stats Section -->
                     <div class="share-stats-section">
                         <h3 class="share-stats-title">Snapshot Statistics</h3>
                         <div class="share-stats-grid">
@@ -546,30 +550,539 @@
                             </div>
                         </div>
                     </div>
+                    <div class="share-qr-section" id="shareQrSection" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <label class="share-label" style="margin: 0;">QR Code:</label>
+                            <button onclick="closeQrSection()" style="
+                        background: transparent;
+                        border: none;
+                        color: #666;
+                        cursor: pointer;
+                        font-size: 20px;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        transition: all 0.2s ease;
+                    " onmouseenter="this.style.background='#f0f0f0'; this.style.color='#333';" onmouseleave="this.style.background='transparent'; this.style.color='#666';">
+                        ✕
+                    </button>
+                        </div>
+                        <div class="share-qr-container" onmouseenter="this.querySelector('.qr-hover-actions').style.opacity='1';" onmouseleave="this.querySelector('.qr-hover-actions').style.opacity='0';">
+                            <div id="share-qr" class="qr-placeholder">
+                                <small>Click "Get QR Code" to generate</small>
+                            </div>
+                            <div class="qr-hover-actions" style="
+                        display: flex;
+                        gap: 8px;
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: rgba(0,0,0,0.7);
+                        padding: 8px;
+                        border-radius: 8px;
+                    ">
+                                <button data-action="copy" title="Copy QR Code" onclick="copyQrCodeToClipboard()" style="
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 6px;
+                            background: white;
+                            border: none;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 16px;
+                            transition: all 0.2s ease;
+                        " onmouseenter="this.style.background='#4CAF50'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseleave="this.style.background='white'; this.style.color='black'; this.style.transform='translateY(0)';">
+                            ⧉
+                        </button>
+                                <button data-action="share" title="Share QR Code" onclick="shareQrCode()" style="
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 6px;
+                            background: white;
+                            border: none;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 16px;
+                            transition: all 0.2s ease;
+                        " onmouseenter="this.style.background='#2196F3'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseleave="this.style.background='white'; this.style.color='black'; this.style.transform='translateY(0)';">
+                            ↗
+                        </button>
+                                <button data-action="download" title="Download QR Code" onclick="downloadQrCode()" style="
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 6px;
+                            background: white;
+                            border: none;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 16px;
+                            transition: all 0.2s ease;
+                        " onmouseenter="this.style.background='#9C27B0'; this.style.color='white'; this.style.transform='translateY(-2px)';" onmouseleave="this.style.background='white'; this.style.color='black'; this.style.transform='translateY(0)';">
+                            ⇩
+                        </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="share-modal-footer">
                     <div class="share-footer-info">
                         <small class="powered-by">
-  Click ‘Continue to destination’ — powered by
-  <a href="https://tinyurl.com/app/features/url-shortener-api" target="_blank" rel="noopener">
-    TinyURL
-  </a>.
-</small>
-
+                    Click 'Continue to destination' — powered by
+                    <a href="https://tinyurl.com/app/features/url-shortener-api" target="_blank" rel="noopener">
+                        TinyURL
+                    </a>.
+                </small>
 
                         <div id="share-exit-restore-container" style="margin-top: 8px; display: none;">
                             <button id="shareExitRestoreBtn" class="secondary-btn">Exit Restore Mode</button>
                         </div>
                     </div>
                     <div class="share-modal-actions">
-
-
                         <button class="share-share-btn primary-btn">Share via App</button>
                     </div>
                 </div>
+
+                <!-- QR Loading Spinner Animation -->
+                <style id="qr-spinner-style">
+                    @keyframes spin {
+                        0% {
+                            transform: rotate(0deg);
+                        }
+                        100% {
+                            transform: rotate(360deg);
+                        }
+                    }
+                    
+                    .qr-loading-spinner {
+                        width: 24px;
+                        height: 24px;
+                        border: 2px solid #ddd;
+                        border-top-color: #2196F3;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                    }
+                </style>
+
+                <!-- QR Code Functions Script -->
+                <script>
+                    // Track QR state to prevent auto-showing
+                    let qrGenerated = false;
+
+                    /**
+                     * Generate QR code for current shareable link using QR API
+                     */
+                    async function generateQrCodeForCurrentLink() {
+                        try {
+                            console.log('[QR] Generating QR code for current link...');
+
+                            const linkInput = document.querySelector('#shareEnvModal .share-link-input');
+                            if (!linkInput) {
+                                alert('No link input found');
+                                return;
+                            }
+
+                            const link = linkInput.value;
+                            if (!link || link.trim() === '') {
+                                alert('Please generate a shareable link first');
+                                return;
+                            }
+
+                            // Show QR section and loading state
+                            const qrSection = document.querySelector('#shareEnvModal #shareQrSection');
+                            const qrContainer = document.querySelector('#shareEnvModal #share-qr');
+
+                            if (!qrSection || !qrContainer) {
+                                console.error('[QR] QR section elements not found');
+                                return;
+                            }
+
+                            // Show the QR section
+                            qrSection.style.display = 'block';
+                            qrGenerated = true;
+
+                            // Show loading state
+                            qrContainer.innerHTML = `
+                        <div style="
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            height: 180px;
+                            width: 180px;
+                            color: #666;
+                            gap: 8px;
+                            background: #f8f9fa;
+                            border-radius: 8px;
+                            border: 1px solid #e0e0e0;
+                        ">
+                            <div class="qr-loading-spinner"></div>
+                            <small>Generating QR code...</small>
+                        </div>
+                    `;
+
+                            // Generate QR code using QR Code API
+                            const encodedLink = encodeURIComponent(link);
+                            const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodedLink}&format=png&margin=10&color=000000&bgcolor=FFFFFF`;
+
+                            // Create image element
+                            const qrImg = new Image();
+                            qrImg.id = 'shareQrImage';
+                            qrImg.alt = 'QR Code - Scan to open shared crypto environment';
+                            qrImg.title = 'Scan this QR code to open the shared crypto environment';
+
+                            // Set up image loading
+                            qrImg.onload = function() {
+                                console.log('[QR] QR code image loaded successfully');
+
+                                // Clear container and add image
+                                qrContainer.innerHTML = '';
+                                qrContainer.appendChild(qrImg);
+
+                                // Add styling to the image
+                                qrImg.style.width = '180px';
+                                qrImg.style.height = '180px';
+                                qrImg.style.borderRadius = '8px';
+                                qrImg.style.border = '1px solid #e0e0e0';
+                                qrImg.style.background = 'white';
+                                qrImg.style.padding = '8px';
+                                qrImg.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                                qrImg.style.opacity = '0';
+                                qrImg.style.transition = 'opacity 0.3s ease';
+
+                                setTimeout(() => {
+                                    qrImg.style.opacity = '1';
+                                }, 100);
+                            };
+
+                            qrImg.onerror = function() {
+                                console.error('[QR] Failed to load QR code image');
+                                qrContainer.innerHTML = `
+                            <div style="
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                height: 180px;
+                                width: 180px;
+                                color: #dc3545;
+                                gap: 8px;
+                                background: #f8f9fa;
+                                border-radius: 8px;
+                                border: 1px solid #e0e0e0;
+                            ">
+                                <div style="font-size: 24px;">⚠️</div>
+                                <small>Failed to generate QR code</small>
+                                <button onclick="generateQrCodeForCurrentLink()" style="
+                                    margin-top: 8px;
+                                    padding: 6px 12px;
+                                    background: #f0f0f0;
+                                    border: 1px solid #ddd;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                ">
+                                    Retry
+                                </button>
+                            </div>
+                        `;
+                            };
+
+                            // Start loading the image
+                            qrImg.src = qrImageUrl;
+
+                            console.log('[QR] QR code generation initiated');
+
+                        } catch (error) {
+                            console.error('[QR] Failed to generate QR code:', error);
+                            alert('Failed to generate QR code. Please try again.');
+                        }
+                    }
+
+                    /**
+                     * Close QR section
+                     */
+                    function closeQrSection() {
+                        const qrSection = document.querySelector('#shareEnvModal #shareQrSection');
+                        if (qrSection) {
+                            qrSection.style.display = 'none';
+                            const qrContainer = qrSection.querySelector('#share-qr');
+                            if (qrContainer) {
+                                qrContainer.innerHTML = '<small>Click "Get QR Code" to generate</small>';
+                            }
+                        }
+                        qrGenerated = false;
+                    }
+
+                    /**
+                     * Copy QR code to clipboard
+                     */
+                    async function copyQrCodeToClipboard() {
+                        try {
+                            const qrImage = document.querySelector('#shareEnvModal #shareQrImage');
+                            if (!qrImage) {
+                                alert('No QR code available to copy');
+                                return;
+                            }
+
+                            console.log('[QR] Copying QR code to clipboard...');
+
+                            // Show loading state
+                            qrImage.style.filter = 'brightness(0.8)';
+
+                            // Fetch the image as blob
+                            const response = await fetch(qrImage.src);
+                            const blob = await response.blob();
+
+                            // Copy to clipboard
+                            await navigator.clipboard.write([
+                                new ClipboardItem({
+                                    'image/png': blob
+                                })
+                            ]);
+
+                            // Restore image and show success
+                            qrImage.style.filter = '';
+
+                            // Show success animation
+                            qrImage.style.boxShadow = '0 0 0 3px #4CAF50';
+                            setTimeout(() => {
+                                qrImage.style.boxShadow = '';
+                            }, 1000);
+
+                            alert('QR code copied to clipboard');
+                            console.log('[QR] QR code copied successfully');
+
+                        } catch (error) {
+                            console.error('[QR] Failed to copy QR code:', error);
+
+                            // Fallback for browsers that don't support ClipboardItem
+                            if (error.name === 'TypeError' || error.name === 'NotAllowedError') {
+                                alert('QR code copying not supported in this browser. Please right-click and save image.');
+                            } else {
+                                alert('Failed to copy QR code');
+                            }
+                        }
+                    }
+
+                    /**
+                     * Share QR code via native share
+                     */
+                    async function shareQrCode() {
+                        try {
+                            const qrImage = document.querySelector('#shareEnvModal #shareQrImage');
+                            if (!qrImage) {
+                                alert('No QR code available to share');
+                                return;
+                            }
+
+                            // Check if Web Share API is available
+                            if (!navigator.share) {
+                                console.log('[QR] Web Share API not available, falling back to download');
+                                downloadQrCode();
+                                return;
+                            }
+
+                            console.log('[QR] Sharing QR code via native share...');
+
+                            // Show loading state
+                            qrImage.style.filter = 'brightness(0.8)';
+
+                            // Fetch the image as blob
+                            const response = await fetch(qrImage.src);
+                            const blob = await response.blob();
+                            const file = new File([blob], 'crypto-view-qr.png', {
+                                type: 'image/png'
+                            });
+
+                            // Prepare share data
+                            const shareData = {
+                                title: 'Crypto View QR Code',
+                                text: 'Scan this QR code to view the crypto environment',
+                                files: [file]
+                            };
+
+                            // Check if files can be shared
+                            if (navigator.canShare && !navigator.canShare(shareData)) {
+                                throw new Error('QR code cannot be shared');
+                            }
+
+                            // Share via native API
+                            await navigator.share(shareData);
+
+                            // Restore image
+                            qrImage.style.filter = '';
+
+                            console.log('[QR] QR code shared successfully');
+
+                        } catch (error) {
+                            console.error('[QR] Failed to share QR code:', error);
+
+                            // Restore image
+                            const qrImage = document.querySelector('#shareEnvModal #shareQrImage');
+                            if (qrImage) {
+                                qrImage.style.filter = '';
+                            }
+
+                            if (error.name === 'AbortError') {
+                                console.log('[QR] Share cancelled by user');
+                            } else if (error.name === 'NotAllowedError') {
+                                alert('Sharing not allowed. Please check permissions.');
+                            } else {
+                                // Fallback to download
+                                console.log('[QR] Falling back to download');
+                                downloadQrCode();
+                            }
+                        }
+                    }
+
+                    /**
+                     * Download QR code
+                     */
+                    function downloadQrCode() {
+                        try {
+                            const qrImage = document.querySelector('#shareEnvModal #shareQrImage');
+                            if (!qrImage) {
+                                alert('No QR code available to download');
+                                return;
+                            }
+
+                            console.log('[QR] Downloading QR code...');
+
+                            // Show loading state
+                            qrImage.style.filter = 'brightness(0.8)';
+
+                            // Create download link
+                            const a = document.createElement('a');
+                            a.href = qrImage.src;
+                            a.download = `crypto-view-qr-${Date.now()}.png`;
+                            a.style.display = 'none';
+
+                            // Add to document and trigger click
+                            document.body.appendChild(a);
+                            a.click();
+
+                            // Clean up
+                            setTimeout(() => {
+                                document.body.removeChild(a);
+                                qrImage.style.filter = '';
+                            }, 100);
+
+                            // Show success animation
+                            qrImage.style.boxShadow = '0 0 0 3px #9C27B0';
+                            setTimeout(() => {
+                                qrImage.style.boxShadow = '';
+                            }, 1000);
+
+                            alert('QR code downloaded');
+                            console.log('[QR] QR code downloaded successfully');
+
+                        } catch (error) {
+                            console.error('[QR] Failed to download QR code:', error);
+                            alert('Failed to download QR code');
+
+                            // Restore image
+                            const qrImage = document.querySelector('#shareEnvModal #shareQrImage');
+                            if (qrImage) {
+                                qrImage.style.filter = '';
+                            }
+                        }
+                    }
+
+                    // Add keyboard shortcut for QR generation (Ctrl+Q)
+                    document.addEventListener('keydown', (e) => {
+                        const shareModal = document.getElementById('shareEnvModal');
+                        if (shareModal && !shareModal.classList.contains('hidden')) {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'q') {
+                                e.preventDefault();
+                                generateQrCodeForCurrentLink();
+                            }
+                        }
+                    });
+                </script>
+
+                <!-- Container CSS Styles -->
+                <style>
+                    .share-qr-container {
+                        position: relative;
+                        background: white;
+                        border-radius: 8px;
+                        padding: 16px;
+                        border: 1px solid #e0e0e0;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 12px;
+                        transition: all 0.3s ease;
+                        width: fit-content;
+                        margin: 0 auto;
+                    }
+                    
+                    .qr-placeholder {
+                        width: 180px;
+                        height: 180px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: #f8f9fa;
+                        border-radius: 8px;
+                        color: #6c757d;
+                        font-size: 14px;
+                        text-align: center;
+                        padding: 12px;
+                        border: 1px dashed #dee2e6;
+                    }
+                    
+                    @media (max-width: 768px) {
+                        .share-modal-actions {
+                            flex-direction: column;
+                            width: 100%;
+                            gap: 8px;
+                        }
+                        .share-qr-btn,
+                        .share-share-btn {
+                            width: 100%;
+                            justify-content: center;
+                            min-width: auto;
+                        }
+                        .share-qr-container {
+                            padding: 12px;
+                        }
+                        .qr-placeholder {
+                            width: 140px;
+                            height: 140px;
+                        }
+                        .qr-hover-actions {
+                            opacity: 1 !important;
+                            margin-top: 8px;
+                        }
+                        .qr-hover-action {
+                            width: 32px !important;
+                            height: 32px !important;
+                            font-size: 14px !important;
+                        }
+                    }
+                    
+                    @media (max-width: 480px) {
+                        .qr-placeholder {
+                            width: 120px;
+                            height: 120px;
+                        }
+                        .share-qr-container {
+                            padding: 8px;
+                        }
+                    }
+                </style>
             </div>
         </div>
+
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-content">
