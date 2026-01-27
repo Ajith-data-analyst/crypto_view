@@ -15,7 +15,6 @@
   </a>
 </p>
 
-
 ### CRYPTO VIEW - ARCHITECTURE MAP
 
 ```mermaid
@@ -167,6 +166,8 @@ graph TB
     API -.->|catch| ERR_API
     VALIDATE -.->|fail| ERR_JSRE
     HF -.->|error| ERR_AI
+```
+
 
 ---
 
