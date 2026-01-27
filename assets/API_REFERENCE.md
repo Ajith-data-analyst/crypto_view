@@ -1,6 +1,18 @@
-# RT-CPIP API Reference
+# CRYPTO VIEW - REAL TIME INR CRYPTO ANALYTICS PLATFORM - API Reference
 
 Complete API documentation for RT-CPIP (Real-Time Cryptocurrency Insights Platform).
+
+[![GitHub Repository](https://img.shields.io/badge/📂_GITHUB_REPOSITORY-Crypto_View-black?style=for-the-badge&logo=github)](https://github.com/Ajith-data-analyst/crypto_view)
+[![MIT License](https://img.shields.io/badge/📜_License-MIT-green?style=for-the-badge)](https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt)
+[![Built with Web Technologies](https://img.shields.io/badge/🔧_Built_with-HTML/CSS/JS-orange?style=for-the-badge)](https://developer.mozilla.org)
+
+---
+
+<p align="center">
+  <a href="https://ajith-data-analyst.github.io/crypto_view/">
+    <img src="https://img.shields.io/badge/VIEW_LIVE_PROJECT-Crypto_View-blue?style=for-the-badge&logo=github"/>
+  </a>
+</p>
 
 ---
 
@@ -854,3 +866,55 @@ headers: {
 **Last Updated:** January 27, 2026
 
 **Document Version:** 1.0
+
+---
+
+<p align="center">
+ <!-- Contact & Immediate Reach -->
+<a href="mailto:ajithramesh2020@gmail.com">
+  <img src="https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white"/>
+</a>
+
+<a href="tel:+919345264522">
+  <img src="https://img.shields.io/badge/Call%20Me-0A66C2?style=for-the-badge&logo=phone&logoColor=white"/>
+</a>
+
+<a href="https://wa.me/9345264522">
+  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white"/>
+</a>
+
+<!-- Professional Identity -->
+<a href="https://www.linkedin.com/in/ajith-ramesh-data-analyst/">
+  <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"/>
+</a>
+
+<a href="https://ajith-data-analyst.github.io/Portfolio/Ajith_R_Resume.pdf">
+  <img src="https://img.shields.io/badge/Resume-4CAF50?style=for-the-badge&logo=googledrive&logoColor=white"/>
+</a>
+
+<!-- Work Proof -->
+<a href="https://ajith-data-analyst.github.io/Portfolio/home.html">
+  <img src="https://img.shields.io/badge/Portfolio-FF6B6B?style=for-the-badge&logo=web&logoColor=white"/>
+</a>
+
+<a href="https://github.com/Ajith-data-analyst">
+  <img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+</p>
+<div align="center">
+
+  
+*Built with precision, powered by data, designed for clarity.*  
+<a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt">
+  *© 2025 Crypto View Project. All rights reserved under MIT License.*
+</a>
+
+</div>
+
+
+
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=footer"/>
+</p>
+
+
