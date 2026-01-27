@@ -2364,7 +2364,7 @@ High-value contributions:
   
 *Built with precision, powered by data, designed for clarity.*  
 <a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt">
-  *© 2025 Crypto View Project. All rights reserved under MIT License.*
+  *© 2026 Crypto View Project. All rights reserved under MIT License.*
 </a>
 
 </div>
