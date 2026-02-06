@@ -905,7 +905,7 @@ headers: {
 
   
 *Built with precision, powered by data, designed for clarity.*  
-<a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt">
+<a href="https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE">
   *© 2025 Crypto View Project. All rights reserved under MIT License.*
 </a>
 
