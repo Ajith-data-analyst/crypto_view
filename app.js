@@ -2159,7 +2159,7 @@ function exportToPDF(snapshot) {
 
         centered("VERIFIED", cx, cy + 2, 7);
 
-        const githubUrl = "https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE.txt";
+        const githubUrl = "https://github.com/Ajith-data-analyst/crypto_view/blob/main/LICENSE";
         const liveUrl = "https://ajith-data-analyst.github.io/crypto_view/";
         const copyrightText = "© 2025 Crypto View | All rights reserved | Live Crypto Price Analytics";
 
