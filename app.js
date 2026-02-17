@@ -1,8 +1,4 @@
-// app.js
-// Changes Made:
-// 1. Fixed Exit Restore Mode button in FAB section (Crypto Statistic Environment)
-// 2. Updated crypto selector to update derived metrics when switching coins in both live and restore modes
-// 3. Fixed derived metrics sourcing from stored JSON data in JSRE mode
+
 
 // Debug flag for share feature
 const SHARE_DEBUG = true;
