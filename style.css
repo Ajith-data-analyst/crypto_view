@@ -1,11 +1,4 @@
-/* 
-  Changes Made:
-  1. Added styles for new popups (export ready, shared link)
-  2. Updated share modal layout for side-by-side QR and stats
-  3. Added hover actions for share modal
-  4. Added new FAB styles
-  5. Added responsive layouts
-*/
+
 
 :root {
     /* Primitive Color Tokens */
